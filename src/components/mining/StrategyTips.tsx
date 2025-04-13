@@ -15,7 +15,7 @@ const StrategyTips = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Optimal Pairing */}
-          <Card className="bg-sphere-card-dark">
+          <Card className="glass-effect">
             <CardContent className="p-5">
               <h3 className="text-xl font-bold mb-4">Optimal Pairing</h3>
               
@@ -37,7 +37,7 @@ const StrategyTips = () => {
           </Card>
           
           {/* Maximizing Earnings */}
-          <Card className="bg-sphere-card-dark">
+          <Card className="glass-effect">
             <CardContent className="p-5">
               <h3 className="text-xl font-bold mb-4">Maximizing Earnings</h3>
               

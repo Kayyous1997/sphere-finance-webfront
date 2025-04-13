@@ -54,9 +54,9 @@ export default {
 					foreground: 'hsl(var(--card-foreground))'
 				},
 				sphere: {
-					green: '#00E676',
-					blue: '#0FB4FF',
-					dark: '#141622',
+					green: '#9b87f5', // Changed to purple
+					blue: '#7E69AB', // Changed to secondary purple
+					dark: '#1A1F2C', // Changed to dark purple
 					darker: '#0B0D14',
 					card: '#1C1F2E',
 					'card-dark': '#171A27',
@@ -91,8 +91,8 @@ export default {
 					'50%': { opacity: '0.5' },
 				},
 				glow: {
-					'0%, 100%': { opacity: '1', boxShadow: '0 0 10px 2px rgba(0, 230, 118, 0.2)' },
-					'50%': { opacity: '0.8', boxShadow: '0 0 10px 2px rgba(0, 230, 118, 0.5)' },
+					'0%, 100%': { opacity: '1', boxShadow: '0 0 10px 2px rgba(155, 135, 245, 0.2)' }, // Updated to purple
+					'50%': { opacity: '0.8', boxShadow: '0 0 10px 2px rgba(155, 135, 245, 0.5)' }, // Updated to purple
 				}
 			},
 			animation: {
