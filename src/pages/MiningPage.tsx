@@ -8,6 +8,8 @@ import HashrateChart from "@/components/mining/HashrateChart";
 import SharesChart from "@/components/mining/SharesChart";
 import WorkersTable from "@/components/mining/WorkersTable";
 import MiningPools from "@/components/mining/MiningPools";
+import HowMiningWorks from "@/components/mining/HowMiningWorks";
+import StrategyTips from "@/components/mining/StrategyTips";
 
 const MiningPage = () => {
   const [isActive, setIsActive] = useState(false);
@@ -208,7 +210,17 @@ const MiningPage = () => {
         </div>
       </div>
       
-      {/* New Hashrate and Shares charts section */}
+      {/* How Mining Works Section */}
+      <div className="mb-8">
+        <HowMiningWorks />
+      </div>
+      
+      {/* Strategy Tips Section */}
+      <div className="mb-8">
+        <StrategyTips />
+      </div>
+      
+      {/* Hashrate and Shares charts section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <HashrateChart isActive={isActive} />
         <SharesChart isActive={isActive} />
