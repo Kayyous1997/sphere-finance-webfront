@@ -1,7 +1,8 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ArrowUpDown, Cpu, Ram, HardDrive, Activity } from "lucide-react";
+import { ArrowUpDown, Cpu, MemoryStick, HardDrive, Activity } from "lucide-react";
 import { useState } from "react";
 
 const MiningPage = () => {
@@ -140,7 +141,7 @@ const MiningPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <Ram className="w-5 h-5 mr-3 text-sphere-green" />
+                  <MemoryStick className="w-5 h-5 mr-3 text-sphere-green" />
                   <div>
                     <div className="text-sm text-gray-400">Memory</div>
                     <div className="font-medium">32GB DDR4-3600</div>
