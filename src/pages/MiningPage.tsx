@@ -4,6 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ArrowUpDown, Cpu, MemoryStick, HardDrive, Activity } from "lucide-react";
 import { useState } from "react";
+import HashrateChart from "@/components/mining/HashrateChart";
+import SharesChart from "@/components/mining/SharesChart";
+import WorkersTable from "@/components/mining/WorkersTable";
+import MiningPools from "@/components/mining/MiningPools";
 
 const MiningPage = () => {
   const [isActive, setIsActive] = useState(false);
@@ -29,7 +33,7 @@ const MiningPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <div className="lg:col-span-2 space-y-8">
           <Card className="card-gradient">
             <CardContent className="p-6">
@@ -202,6 +206,22 @@ const MiningPage = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+      
+      {/* New Hashrate and Shares charts section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <HashrateChart isActive={isActive} />
+        <SharesChart isActive={isActive} />
+      </div>
+      
+      {/* Workers Table */}
+      <div className="mb-8">
+        <WorkersTable isActive={isActive} />
+      </div>
+      
+      {/* Mining Pools */}
+      <div className="mb-8">
+        <MiningPools />
       </div>
     </div>
   );
