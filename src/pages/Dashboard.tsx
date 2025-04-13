@@ -1,8 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Cpu, Memory, Network, Activity } from "lucide-react";
+import { Cpu, Ram, Network, Activity } from "lucide-react";
 
 const Dashboard = () => {
   return (
@@ -82,7 +81,7 @@ const Dashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center mb-4">
               <div className="mr-3">
-                <Memory className="text-yellow-500 h-6 w-6" />
+                <Ram className="text-yellow-500 h-6 w-6" />
               </div>
               <div>
                 <h3 className="font-medium">Memory</h3>

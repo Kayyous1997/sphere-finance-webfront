@@ -1,8 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ArrowUpDown, Cpu, Memory, HardDrive, Activity } from "lucide-react";
+import { ArrowUpDown, Cpu, Ram, HardDrive, Activity } from "lucide-react";
 import { useState } from "react";
 
 const MiningPage = () => {
@@ -13,7 +12,6 @@ const MiningPage = () => {
     setIsActive(!isActive);
     
     if (!isActive) {
-      // Simulate progress updates when mining is active
       setProgress(0);
       const interval = setInterval(() => {
         setProgress((prev) => {
@@ -52,7 +50,7 @@ const MiningPage = () => {
                     <span>Hashrate</span>
                     <span className="text-sphere-green">{isActive ? "0.42 MH/s" : "0.00 MH/s"}</span>
                   </div>
-                  <Progress value={isActive ? progress : 0} className="h-2 bg-sphere-card-dark" indicatorClassName="bg-sphere-green" />
+                  <Progress value={isActive ? progress : 0} className="h-2 bg-sphere-card-dark" />
                 </div>
 
                 <div>
@@ -60,7 +58,7 @@ const MiningPage = () => {
                     <span>Network Difficulty</span>
                     <span className="text-sphere-green">{isActive ? "Medium" : "N/A"}</span>
                   </div>
-                  <Progress value={isActive ? 45 : 0} className="h-2 bg-sphere-card-dark" indicatorClassName="bg-sphere-green" />
+                  <Progress value={isActive ? 45 : 0} className="h-2 bg-sphere-card-dark" />
                 </div>
 
                 <div>
@@ -68,7 +66,7 @@ const MiningPage = () => {
                     <span>Efficiency</span>
                     <span className="text-sphere-green">{isActive ? "78%" : "0%"}</span>
                   </div>
-                  <Progress value={isActive ? 78 : 0} className="h-2 bg-sphere-card-dark" indicatorClassName="bg-sphere-green" />
+                  <Progress value={isActive ? 78 : 0} className="h-2 bg-sphere-card-dark" />
                 </div>
               </div>
             </CardContent>
@@ -142,7 +140,7 @@ const MiningPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <Memory className="w-5 h-5 mr-3 text-sphere-green" />
+                  <Ram className="w-5 h-5 mr-3 text-sphere-green" />
                   <div>
                     <div className="text-sm text-gray-400">Memory</div>
                     <div className="font-medium">32GB DDR4-3600</div>
@@ -195,7 +193,7 @@ const MiningPage = () => {
               <h2 className="text-xl font-bold mb-4">Power Consumption</h2>
               <div className="text-3xl font-bold mb-2">{isActive ? "715W" : "0W"}</div>
               <div className="text-gray-400 text-sm mb-4">Total system power</div>
-              <Progress value={isActive ? 72 : 0} className="h-2 bg-sphere-card-dark" indicatorClassName="bg-sphere-green" />
+              <Progress value={isActive ? 72 : 0} className="h-2 bg-sphere-card-dark" />
               <div className="flex justify-between mt-2 text-sm">
                 <span className="text-gray-400">Efficiency</span>
                 <span className="text-sphere-green">{isActive ? "0.59 H/W" : "0.00 H/W"}</span>
