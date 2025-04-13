@@ -1,8 +1,12 @@
 
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { Wallet } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import UserMenu from "./auth/UserMenu";
+import AuthModal from "./auth/AuthModal";
 
 const NavItem = ({ 
   href, 
@@ -27,6 +31,20 @@ const NavItem = ({
 );
 
 const Navbar = () => {
+  const { user } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<"login" | "signup">("login");
+
+  const openLoginModal = () => {
+    setAuthModalTab("login");
+    setIsAuthModalOpen(true);
+  };
+
+  const openSignupModal = () => {
+    setAuthModalTab("signup");
+    setIsAuthModalOpen(true);
+  };
+
   return (
     <nav className="flex items-center justify-between p-4 bg-sphere-dark border-b border-gray-800">
       <div className="flex items-center">
@@ -52,18 +70,40 @@ const Navbar = () => {
         </div>
       </div>
       <div className="flex items-center space-x-2">
-        <Link to="/connect">
-          <Button className="bg-sphere-green text-black hover:bg-green-400">
-            <Wallet className="mr-2 h-4 w-4" />
-            Connect Wallet
-          </Button>
-        </Link>
-        <Link to="/app">
-          <Button variant="outline" className="hidden md:flex">
-            Open dApp
-          </Button>
-        </Link>
+        {user ? (
+          <>
+            <UserMenu />
+            <Link to="/mining">
+              <Button variant="outline" className="hidden md:flex">
+                Mining Dashboard
+              </Button>
+            </Link>
+          </>
+        ) : (
+          <>
+            <Button 
+              onClick={openSignupModal}
+              variant="outline" 
+              className="hidden md:inline-flex"
+            >
+              Sign Up
+            </Button>
+            <Button 
+              onClick={openLoginModal}
+              className="bg-sphere-green text-black hover:bg-green-400"
+            >
+              <Wallet className="mr-2 h-4 w-4" />
+              Login
+            </Button>
+          </>
+        )}
       </div>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        defaultTab={authModalTab}
+      />
     </nav>
   );
 };
