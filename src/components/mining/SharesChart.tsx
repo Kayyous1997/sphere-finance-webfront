@@ -1,7 +1,17 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 
-const SharesChart = ({ isActive }: { isActive: boolean }) => {
+interface SharesChartProps {
+  isActive: boolean;
+  stats?: {
+    hashrate: number;
+    sharesAccepted: number;
+    sharesRejected: number;
+    rewards: number;
+  };
+}
+
+const SharesChart = ({ isActive, stats = { hashrate: 0, sharesAccepted: 0, sharesRejected: 0, rewards: 0 } }: SharesChartProps) => {
   return (
     <Card className="card-gradient">
       <CardContent className="p-6">
@@ -22,7 +32,7 @@ const SharesChart = ({ isActive }: { isActive: boolean }) => {
           ))}
           {isActive && (
             <div className="absolute top-2 right-2 bg-sphere-card-dark bg-opacity-70 px-2 py-1 rounded text-xs">
-              Shares: 8
+              Shares: {stats.sharesAccepted}
             </div>
           )}
         </div>

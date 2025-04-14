@@ -9,6 +9,113 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      mining_sessions: {
+        Row: {
+          ended_at: string | null
+          id: string
+          rewards_earned: number | null
+          shares_accepted: number | null
+          shares_rejected: number | null
+          started_at: string
+          status: string | null
+          total_hashrate: number | null
+          user_id: string
+          worker_details: Json | null
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          rewards_earned?: number | null
+          shares_accepted?: number | null
+          shares_rejected?: number | null
+          started_at?: string
+          status?: string | null
+          total_hashrate?: number | null
+          user_id: string
+          worker_details?: Json | null
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          rewards_earned?: number | null
+          shares_accepted?: number | null
+          shares_rejected?: number | null
+          started_at?: string
+          status?: string | null
+          total_hashrate?: number | null
+          user_id?: string
+          worker_details?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mining_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mining_workers: {
+        Row: {
+          created_at: string
+          hardware_details: Json | null
+          hashrate: number | null
+          id: string
+          last_active: string | null
+          name: string
+          power_usage: number | null
+          session_id: string | null
+          status: string | null
+          temperature: number | null
+          user_id: string
+          worker_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          hardware_details?: Json | null
+          hashrate?: number | null
+          id?: string
+          last_active?: string | null
+          name: string
+          power_usage?: number | null
+          session_id?: string | null
+          status?: string | null
+          temperature?: number | null
+          user_id: string
+          worker_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          hardware_details?: Json | null
+          hashrate?: number | null
+          id?: string
+          last_active?: string | null
+          name?: string
+          power_usage?: number | null
+          session_id?: string | null
+          status?: string | null
+          temperature?: number | null
+          user_id?: string
+          worker_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mining_workers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mining_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mining_workers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
