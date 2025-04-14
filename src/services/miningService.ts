@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Json } from "@/integrations/supabase/types";
 
 // Types for mining operations
 export interface MiningSession {
@@ -45,7 +46,11 @@ export const miningService = {
       });
       
       if (error) throw error;
-      return data.session;
+      // Cast the status to the expected type
+      return {
+        ...data.session,
+        status: data.session.status as 'active' | 'completed' | 'terminated'
+      };
     } catch (error) {
       console.error('Error starting mining session:', error);
       toast.error('Failed to start mining session');
@@ -60,7 +65,11 @@ export const miningService = {
       });
       
       if (error) throw error;
-      return data.session;
+      // Cast the status to the expected type
+      return {
+        ...data.session,
+        status: data.session.status as 'active' | 'completed' | 'terminated'
+      };
     } catch (error) {
       console.error('Error stopping mining session:', error);
       toast.error('Failed to stop mining session');
@@ -68,7 +77,7 @@ export const miningService = {
     }
   },
   
-  async updateMiningStats(userId: string, sessionId: string, stats: any): Promise<MiningSession> {
+  async updateMiningStats(userId: string, sessionId: string, stats: any): Promise<MiningSession | null> {
     try {
       const { data, error } = await supabase.functions.invoke('manage-mining', {
         body: { 
@@ -80,7 +89,11 @@ export const miningService = {
       });
       
       if (error) throw error;
-      return data.session;
+      // Cast the status to the expected type
+      return {
+        ...data.session,
+        status: data.session.status as 'active' | 'completed' | 'terminated'
+      };
     } catch (error) {
       console.error('Error updating mining stats:', error);
       return null;
@@ -103,7 +116,14 @@ export const miningService = {
         return null;
       }
       
-      return data || null;
+      if (!data) return null;
+      
+      // Cast the status to the expected type
+      return {
+        ...data,
+        status: data.status as 'active' | 'completed' | 'terminated',
+        worker_details: data.worker_details as any
+      };
     } catch (error) {
       console.error('Error getting active mining session:', error);
       return null;
@@ -119,7 +139,12 @@ export const miningService = {
       
       if (error) throw error;
       toast.success('Worker created successfully');
-      return data.worker;
+      // Cast the status to the expected type
+      return {
+        ...data.worker,
+        status: data.worker.status as 'online' | 'offline' | 'maintenance',
+        hardware_details: data.worker.hardware_details as any
+      };
     } catch (error) {
       console.error('Error creating worker:', error);
       toast.error('Failed to create worker');
@@ -134,7 +159,12 @@ export const miningService = {
       });
       
       if (error) throw error;
-      return data.worker;
+      // Cast the status to the expected type
+      return {
+        ...data.worker,
+        status: data.worker.status as 'online' | 'offline' | 'maintenance',
+        hardware_details: data.worker.hardware_details as any
+      };
     } catch (error) {
       console.error('Error updating worker:', error);
       toast.error('Failed to update worker');
@@ -165,7 +195,14 @@ export const miningService = {
         .eq('user_id', userId);
         
       if (error) throw error;
-      return data || [];
+      if (!data) return [];
+      
+      // Map and cast each worker's status to the expected type
+      return data.map(worker => ({
+        ...worker,
+        status: worker.status as 'online' | 'offline' | 'maintenance',
+        hardware_details: worker.hardware_details as any
+      }));
     } catch (error) {
       console.error('Error fetching user workers:', error);
       return [];
