@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import AuthModal from "./AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import WalletConnection from "./WalletConnection";
+import { useNavigate } from "react-router-dom";
 
 const AuthHero = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"login" | "signup">("signup");
 
@@ -20,14 +22,18 @@ const AuthHero = () => {
     setIsAuthModalOpen(true);
   };
 
+  const goToMiningDashboard = () => {
+    navigate("/mining");
+  };
+
   if (user) {
     return (
       <div className="bg-gradient-to-r from-sphere-dark to-sphere-darker p-8 rounded-lg shadow-lg text-center">
         <h2 className="text-2xl font-bold mb-4">Welcome back!</h2>
         <p className="text-gray-300 mb-6">You're signed in as {user.email}</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button asChild>
-            <a href="/mining">Go to Mining Dashboard</a>
+          <Button onClick={goToMiningDashboard}>
+            Go to Mining Dashboard
           </Button>
           <WalletConnection />
         </div>

@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 const MiningPage = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [isActive, setIsActive] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -28,9 +28,14 @@ const MiningPage = () => {
     sharesRejected: 0,
     rewards: 0
   });
+  const [pageLoading, setPageLoading] = useState(true);
 
   // Load active session and workers on mount
   useEffect(() => {
+    // Wait for auth state to resolve before checking
+    if (loading) return;
+    
+    // If user is not authenticated, redirect to login
     if (!user) {
       toast.error("Please login to access the mining dashboard");
       navigate("/");
@@ -39,6 +44,7 @@ const MiningPage = () => {
 
     const loadSessionAndWorkers = async () => {
       try {
+        setPageLoading(true);
         // Get active session
         const session = await miningService.getActiveMiningSession(user.id);
         if (session) {
@@ -56,13 +62,15 @@ const MiningPage = () => {
         // Get workers
         const userWorkers = await miningService.getUserWorkers(user.id);
         setWorkers(userWorkers);
+        setPageLoading(false);
       } catch (error) {
         console.error("Error loading session data:", error);
+        setPageLoading(false);
       }
     };
 
     loadSessionAndWorkers();
-  }, [user, navigate]);
+  }, [user, navigate, loading]);
 
   // Mining simulation interval
   useEffect(() => {
@@ -155,6 +163,35 @@ const MiningPage = () => {
       }
     }
   };
+
+  // Show loading state while authentication is being checked
+  if (loading || pageLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center h-[50vh]">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-4">Loading Mining Dashboard...</h2>
+          <Progress value={50} className="w-64 h-2 bg-sphere-card-dark" />
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth required message if not authenticated
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="card-gradient">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-xl font-bold mb-4">Authentication Required</h2>
+            <p className="mb-4">Please login to access the mining dashboard</p>
+            <Button onClick={() => navigate("/")} className="bg-sphere-green text-black">
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

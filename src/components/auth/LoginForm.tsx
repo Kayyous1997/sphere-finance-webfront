@@ -4,9 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const LoginForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { signIn } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,6 +25,8 @@ const LoginForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       setLoading(true);
       await signIn(email, password);
       if (onSuccess) onSuccess();
+      // Redirect to mining dashboard after successful login
+      navigate("/mining");
     } catch (error) {
       console.error("Login error:", error);
     } finally {
