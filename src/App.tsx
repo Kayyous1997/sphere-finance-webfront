@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
+import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import MiningPage from "./pages/MiningPage";
 import WalletConnect from "./pages/WalletConnect";
@@ -24,7 +25,8 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Layout />}>
-                <Route index element={<Dashboard />} />
+                <Route index element={<Index />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/mining" element={<MiningPage />} />
                 <Route path="/connect" element={<WalletConnect />} />
                 <Route path="*" element={<NotFound />} />
