@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +9,7 @@ import WorkersTable from "@/components/mining/WorkersTable";
 import MiningPools from "@/components/mining/MiningPools";
 import HowMiningWorks from "@/components/mining/HowMiningWorks";
 import StrategyTips from "@/components/mining/StrategyTips";
+import ReferralSystem from "@/components/mining/ReferralSystem";
 import { useAuth } from "@/contexts/AuthContext";
 import { miningService, MiningSession, MiningWorker } from "@/services/miningService";
 import { toast } from "sonner";
@@ -29,13 +29,15 @@ const MiningPage = () => {
     rewards: 0
   });
   const [pageLoading, setPageLoading] = useState(true);
+  const [referralInfo, setReferralInfo] = useState({
+    referralCode: "",
+    referralCount: 0,
+    totalBonus: 0
+  });
 
-  // Load active session and workers on mount
   useEffect(() => {
-    // Wait for auth state to resolve before checking
     if (loading) return;
     
-    // If user is not authenticated, redirect to login
     if (!user) {
       toast.error("Please login to access the mining dashboard");
       navigate("/");
@@ -45,12 +47,11 @@ const MiningPage = () => {
     const loadSessionAndWorkers = async () => {
       try {
         setPageLoading(true);
-        // Get active session
         const session = await miningService.getActiveMiningSession(user.id);
         if (session) {
           setCurrentSession(session);
           setIsActive(true);
-          setProgress(100); // Session already active
+          setProgress(100);
           setMiningStats({
             hashrate: session.total_hashrate,
             sharesAccepted: session.shares_accepted,
@@ -59,9 +60,33 @@ const MiningPage = () => {
           });
         }
 
-        // Get workers
         const userWorkers = await miningService.getUserWorkers(user.id);
         setWorkers(userWorkers);
+
+        try {
+          const referrals = await miningService.getUserReferrals(user.id);
+          const baseBonus = referrals.count * 5;
+          
+          let milestoneBonus = 0;
+          if (referrals.count >= 50) milestoneBonus = 100;
+          else if (referrals.count >= 25) milestoneBonus = 50;
+          else if (referrals.count >= 10) milestoneBonus = 25;
+          else if (referrals.count >= 5) milestoneBonus = 10;
+          
+          setReferralInfo({
+            referralCode: referrals.code || "",
+            referralCount: referrals.count,
+            totalBonus: baseBonus + milestoneBonus
+          });
+        } catch (error) {
+          console.error("Error loading referral data:", error);
+          setReferralInfo({
+            referralCode: "",
+            referralCount: 0,
+            totalBonus: 0
+          });
+        }
+        
         setPageLoading(false);
       } catch (error) {
         console.error("Error loading session data:", error);
@@ -72,12 +97,10 @@ const MiningPage = () => {
     loadSessionAndWorkers();
   }, [user, navigate, loading]);
 
-  // Mining simulation interval
   useEffect(() => {
     if (!isActive || !currentSession || !user) return;
 
     let interval = setInterval(async () => {
-      // Simulate mining activity with random fluctuations
       const hashrate = miningStats.hashrate + (Math.random() * 0.1 - 0.05);
       const sharesAccepted = miningStats.sharesAccepted + (Math.random() > 0.8 ? 1 : 0);
       const sharesRejected = miningStats.sharesRejected + (Math.random() > 0.95 ? 1 : 0);
@@ -92,7 +115,6 @@ const MiningPage = () => {
 
       setMiningStats(newStats);
 
-      // Update session in database every 10 seconds
       if (Math.random() > 0.9) {
         try {
           await miningService.updateMiningStats(user.id, currentSession.id, {
@@ -117,7 +139,6 @@ const MiningPage = () => {
     }
 
     if (isActive) {
-      // Stop mining
       try {
         await miningService.stopMining(user.id, currentSession.id);
         setIsActive(false);
@@ -129,42 +150,33 @@ const MiningPage = () => {
         toast.error("Failed to stop mining");
       }
     } else {
-      // Start mining
-      try {
-        setProgress(0);
-        
-        // Use active workers for this session
-        const activeWorkers = workers.filter(w => w.status === 'online');
-        
-        const session = await miningService.startMining(user.id, {
-          workers: activeWorkers,
-          initial_hashrate: activeWorkers.reduce((sum, w) => sum + w.hashrate, 0)
+      setProgress(0);
+      
+      const activeWorkers = workers.filter(w => w.status === 'online');
+      
+      const session = await miningService.startMining(user.id, {
+        workers: activeWorkers,
+        initial_hashrate: activeWorkers.reduce((sum, w) => sum + w.hashrate, 0)
+      });
+      
+      setCurrentSession(session);
+      setIsActive(true);
+      
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          const newValue = prev + Math.random() * 5;
+          if (newValue >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return newValue;
         });
-        
-        setCurrentSession(session);
-        setIsActive(true);
-        
-        // Simulate progress bar filling up
-        const interval = setInterval(() => {
-          setProgress((prev) => {
-            const newValue = prev + Math.random() * 5;
-            if (newValue >= 100) {
-              clearInterval(interval);
-              return 100;
-            }
-            return newValue;
-          });
-        }, 500);
-        
-        toast.success("Mining started successfully");
-      } catch (error) {
-        console.error("Error starting mining:", error);
-        toast.error("Failed to start mining");
-      }
+      }, 500);
+      
+      toast.success("Mining started successfully");
     }
   };
 
-  // Show loading state while authentication is being checked
   if (loading || pageLoading) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center h-[50vh]">
@@ -176,7 +188,6 @@ const MiningPage = () => {
     );
   }
 
-  // Show auth required message if not authenticated
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -392,23 +403,28 @@ const MiningPage = () => {
         </div>
       </div>
       
-      {/* How Mining Works Section */}
+      <div className="mb-8">
+        <ReferralSystem 
+          userId={user?.id || ""}
+          referralCode={referralInfo.referralCode}
+          referralCount={referralInfo.referralCount}
+          totalBonus={referralInfo.totalBonus}
+        />
+      </div>
+      
       <div className="mb-8">
         <HowMiningWorks />
       </div>
       
-      {/* Strategy Tips Section */}
       <div className="mb-8">
         <StrategyTips />
       </div>
       
-      {/* Hashrate and Shares charts section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <HashrateChart isActive={isActive} stats={miningStats} />
         <SharesChart isActive={isActive} stats={miningStats} />
       </div>
       
-      {/* Workers Table */}
       <div className="mb-8">
         <WorkersTable 
           isActive={isActive} 
@@ -445,7 +461,6 @@ const MiningPage = () => {
         />
       </div>
       
-      {/* Mining Pools */}
       <div className="mb-8">
         <MiningPools />
       </div>

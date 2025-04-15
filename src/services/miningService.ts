@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -35,6 +34,11 @@ export interface MiningWorker {
     memory: string;
     storage: string;
   };
+}
+
+export interface ReferralInfo {
+  code: string;
+  count: number;
 }
 
 export const miningService = {
@@ -206,6 +210,103 @@ export const miningService = {
     } catch (error) {
       console.error('Error fetching user workers:', error);
       return [];
+    }
+  },
+
+  // Referral system
+  async getUserReferrals(userId: string): Promise<ReferralInfo> {
+    try {
+      // Get user profile to check for referral code
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('referral_code')
+        .eq('id', userId)
+        .single();
+        
+      if (profileError) throw profileError;
+      
+      let referralCode = profile?.referral_code || '';
+      
+      // If no referral code exists, generate one and save it
+      if (!referralCode) {
+        referralCode = `SPH${userId.substring(0, 8)}`;
+        
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ referral_code: referralCode })
+          .eq('id', userId);
+          
+        if (updateError) {
+          console.error('Error saving referral code:', updateError);
+        }
+      }
+      
+      // Count how many users have used this referral code
+      const { count, error: countError } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('referred_by', userId);
+        
+      if (countError) throw countError;
+      
+      return {
+        code: referralCode,
+        count: count || 0
+      };
+    } catch (error) {
+      console.error('Error getting user referrals:', error);
+      return { code: '', count: 0 };
+    }
+  },
+  
+  async applyReferralCode(userId: string, referralCode: string): Promise<boolean> {
+    try {
+      // Find the user who owns this referral code
+      const { data: referrer, error: referrerError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('referral_code', referralCode)
+        .single();
+        
+      if (referrerError || !referrer) {
+        toast.error('Invalid referral code');
+        return false;
+      }
+      
+      // Make sure user isn't referring themselves
+      if (referrer.id === userId) {
+        toast.error('You cannot refer yourself');
+        return false;
+      }
+      
+      // Check if user has already been referred
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('referred_by')
+        .eq('id', userId)
+        .single();
+        
+      if (profileError) throw profileError;
+      
+      if (profile.referred_by) {
+        toast.error('You have already used a referral code');
+        return false;
+      }
+      
+      // Apply the referral
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ referred_by: referrer.id })
+        .eq('id', userId);
+        
+      if (updateError) throw updateError;
+      
+      toast.success('Referral code applied successfully');
+      return true;
+    } catch (error) {
+      console.error('Error applying referral code:', error);
+      toast.error('Error applying referral code');
+      return false;
     }
   }
 };
