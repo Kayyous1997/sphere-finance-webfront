@@ -1,17 +1,14 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ArrowUpDown, Cpu, MemoryStick, HardDrive, Activity } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import HashrateChart from "@/components/mining/HashrateChart";
 import SharesChart from "@/components/mining/SharesChart";
-import WorkersTable from "@/components/mining/WorkersTable";
-import MiningPools from "@/components/mining/MiningPools";
-import HowMiningWorks from "@/components/mining/HowMiningWorks";
-import StrategyTips from "@/components/mining/StrategyTips";
 import ReferralSystem from "@/components/mining/ReferralSystem";
 import { useAuth } from "@/contexts/AuthContext";
-import { miningService, MiningSession, MiningWorker } from "@/services/miningService";
+import { miningService, MiningSession } from "@/services/miningService";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -21,14 +18,13 @@ const MiningPage = () => {
   const [isActive, setIsActive] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentSession, setCurrentSession] = useState<MiningSession | null>(null);
-  const [workers, setWorkers] = useState<MiningWorker[]>([]);
+  const [pageLoading, setPageLoading] = useState(true);
   const [miningStats, setMiningStats] = useState({
     hashrate: 0,
     sharesAccepted: 0,
     sharesRejected: 0,
     rewards: 0
   });
-  const [pageLoading, setPageLoading] = useState(true);
   const [referralInfo, setReferralInfo] = useState({
     referralCode: "",
     referralCount: 0,
@@ -44,7 +40,7 @@ const MiningPage = () => {
       return;
     }
 
-    const loadSessionAndWorkers = async () => {
+    const loadSessionAndReferrals = async () => {
       try {
         setPageLoading(true);
         const session = await miningService.getActiveMiningSession(user.id);
@@ -59,9 +55,6 @@ const MiningPage = () => {
             rewards: session.rewards_earned
           });
         }
-
-        const userWorkers = await miningService.getUserWorkers(user.id);
-        setWorkers(userWorkers);
 
         try {
           const referrals = await miningService.getUserReferrals(user.id);
@@ -94,7 +87,7 @@ const MiningPage = () => {
       }
     };
 
-    loadSessionAndWorkers();
+    loadSessionAndReferrals();
   }, [user, navigate, loading]);
 
   useEffect(() => {
@@ -152,11 +145,8 @@ const MiningPage = () => {
     } else {
       setProgress(0);
       
-      const activeWorkers = workers.filter(w => w.status === 'online');
-      
       const session = await miningService.startMining(user.id, {
-        workers: activeWorkers,
-        initial_hashrate: activeWorkers.reduce((sum, w) => sum + w.hashrate, 0)
+        initial_hashrate: 45.5
       });
       
       setCurrentSession(session);
@@ -322,42 +312,6 @@ const MiningPage = () => {
         <div className="space-y-8">
           <Card className="card-gradient">
             <CardContent className="p-6">
-              <h2 className="text-xl font-bold mb-4">Worker Details</h2>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <Cpu className="w-5 h-5 mr-3 text-sphere-green" />
-                  <div>
-                    <div className="text-sm text-gray-400">CPU</div>
-                    <div className="font-medium">AMD Ryzen 9 5900X</div>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <MemoryStick className="w-5 h-5 mr-3 text-sphere-green" />
-                  <div>
-                    <div className="text-sm text-gray-400">Memory</div>
-                    <div className="font-medium">32GB DDR4-3600</div>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <HardDrive className="w-5 h-5 mr-3 text-sphere-green" />
-                  <div>
-                    <div className="text-sm text-gray-400">Storage</div>
-                    <div className="font-medium">1TB NVMe SSD</div>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <Activity className="w-5 h-5 mr-3 text-sphere-green" />
-                  <div>
-                    <div className="text-sm text-gray-400">GPU</div>
-                    <div className="font-medium">RTX 3080 Ti</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-gradient">
-            <CardContent className="p-6">
               <h2 className="text-xl font-bold mb-4">Estimated Earnings</h2>
               <div className="space-y-4">
                 <div className="bg-sphere-card-dark p-3 rounded-md">
@@ -412,57 +366,9 @@ const MiningPage = () => {
         />
       </div>
       
-      <div className="mb-8">
-        <HowMiningWorks />
-      </div>
-      
-      <div className="mb-8">
-        <StrategyTips />
-      </div>
-      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <HashrateChart isActive={isActive} stats={miningStats} />
         <SharesChart isActive={isActive} stats={miningStats} />
-      </div>
-      
-      <div className="mb-8">
-        <WorkersTable 
-          isActive={isActive} 
-          workers={workers}
-          onAddWorker={async (newWorker) => {
-            if (!user) return;
-            try {
-              const created = await miningService.createWorker(user.id, newWorker);
-              setWorkers([...workers, created]);
-              toast.success("Worker added successfully");
-            } catch (error) {
-              console.error("Error adding worker:", error);
-            }
-          }}
-          onUpdateWorker={async (workerId, updates) => {
-            if (!user) return;
-            try {
-              await miningService.updateWorker(user.id, workerId, updates);
-              setWorkers(workers.map(w => w.id === workerId ? {...w, ...updates} : w));
-            } catch (error) {
-              console.error("Error updating worker:", error);
-            }
-          }}
-          onDeleteWorker={async (workerId) => {
-            if (!user) return;
-            try {
-              await miningService.deleteWorker(user.id, workerId);
-              setWorkers(workers.filter(w => w.id !== workerId));
-              toast.success("Worker deleted successfully");
-            } catch (error) {
-              console.error("Error deleting worker:", error);
-            }
-          }}
-        />
-      </div>
-      
-      <div className="mb-8">
-        <MiningPools />
       </div>
     </div>
   );
