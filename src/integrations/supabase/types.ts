@@ -122,6 +122,8 @@ export type Database = {
           hashrate: number | null
           id: string
           mining_rewards: number | null
+          referral_code: string | null
+          referred_by: string | null
           total_shares: number | null
           updated_at: string
           username: string | null
@@ -132,6 +134,8 @@ export type Database = {
           hashrate?: number | null
           id: string
           mining_rewards?: number | null
+          referral_code?: string | null
+          referred_by?: string | null
           total_shares?: number | null
           updated_at?: string
           username?: string | null
@@ -142,12 +146,22 @@ export type Database = {
           hashrate?: number | null
           id?: string
           mining_rewards?: number | null
+          referral_code?: string | null
+          referred_by?: string | null
           total_shares?: number | null
           updated_at?: string
           username?: string | null
           wallet_address?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
