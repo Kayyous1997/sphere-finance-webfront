@@ -160,9 +160,3 @@ export const taskService = {
     }
   }
 };
-
-// Need to create a DB function for incrementing values
-export const createIncrementFunction = async () => {
-  const { error } = await supabase.rpc('create_increment_function', {});
-  if (error) console.error('Error creating increment function:', error);
-};
