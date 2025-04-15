@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -10,85 +11,111 @@ import {
   Twitter,
   Facebook, 
   Youtube,
-  Check
+  Check,
+  Loader2
 } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
-
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  points: number;
-}
+import { useAuth } from "@/contexts/AuthContext";
+import { Task, UserTask, taskService } from "@/services/taskService";
 
 const ContentPage = () => {
-  const [dailyTasks, setDailyTasks] = useState<Task[]>([
-    { id: "daily-1", title: "Complete 1 hour of mining", completed: false, points: 5 },
-    { id: "daily-2", title: "Check in to the app", completed: false, points: 2 },
-    { id: "daily-3", title: "Visit the learn section", completed: false, points: 3 },
-    { id: "daily-4", title: "Read one article", completed: false, points: 4 },
-    { id: "daily-5", title: "View your mining stats", completed: false, points: 1 }
-  ]);
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [dailyTasks, setDailyTasks] = useState<Task[]>([]);
+  const [weeklyTasks, setWeeklyTasks] = useState<Task[]>([]);
+  const [socialTasks, setSocialTasks] = useState<Task[]>([]);
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
+  const [userPoints, setUserPoints] = useState(0);
+  const [claimingRewards, setClaimingRewards] = useState(false);
 
-  const [weeklyTasks, setWeeklyTasks] = useState<Task[]>([
-    { id: "weekly-1", title: "Complete all daily tasks for 5 days", completed: false, points: 15 },
-    { id: "weekly-2", title: "Refer a friend", completed: false, points: 25 },
-    { id: "weekly-3", title: "Mine for at least 10 hours total", completed: false, points: 20 },
-    { id: "weekly-4", title: "Participate in a community discussion", completed: false, points: 10 }
-  ]);
-
-  const [socialTasks, setSocialTasks] = useState<Task[]>([
-    { id: "social-1", title: "Share your mining progress on Twitter", completed: false, points: 8 },
-    { id: "social-2", title: "Follow our official Instagram", completed: false, points: 5 },
-    { id: "social-3", title: "Join our Discord community", completed: false, points: 7 },
-    { id: "social-4", title: "Subscribe to our YouTube channel", completed: false, points: 6 }
-  ]);
-
-  const toggleTaskCompletion = (taskId: string, taskType: 'daily' | 'weekly' | 'social') => {
-    let updater: Function;
-    let tasks: Task[];
-
-    if (taskType === 'daily') {
-      updater = setDailyTasks;
-      tasks = [...dailyTasks];
-    } else if (taskType === 'weekly') {
-      updater = setWeeklyTasks;
-      tasks = [...weeklyTasks];
-    } else {
-      updater = setSocialTasks;
-      tasks = [...socialTasks];
+  useEffect(() => {
+    if (!user) {
+      toast.error("Please login to access tasks");
+      return;
     }
-
-    const taskIndex = tasks.findIndex(task => task.id === taskId);
-    if (taskIndex !== -1) {
-      const newCompletedState = !tasks[taskIndex].completed;
-      tasks[taskIndex] = { ...tasks[taskIndex], completed: newCompletedState };
-      updater(tasks);
-
-      if (newCompletedState) {
-        toast.success(`Task completed! +${tasks[taskIndex].points} points`);
+    
+    const loadTasks = async () => {
+      try {
+        setLoading(true);
+        
+        // Load all tasks
+        const [daily, weekly, social, userCompleted] = await Promise.all([
+          taskService.getTasksByType('daily'),
+          taskService.getTasksByType('weekly'),
+          taskService.getTasksByType('social'),
+          taskService.getUserCompletedTasks(user.id),
+          taskService.getUserPoints(user.id).then(setUserPoints)
+        ]);
+        
+        setDailyTasks(daily);
+        setWeeklyTasks(weekly);
+        setSocialTasks(social);
+        
+        // Mark completed tasks
+        const completedIds = new Set(userCompleted.map(ut => ut.task_id));
+        setCompletedTaskIds(completedIds);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading tasks:", error);
+        setLoading(false);
       }
+    };
+    
+    loadTasks();
+  }, [user]);
+
+  const toggleTaskCompletion = async (taskId: string) => {
+    if (!user) {
+      toast.error("Please login to complete tasks");
+      return;
+    }
+    
+    // If task is already completed, do nothing
+    if (completedTaskIds.has(taskId)) {
+      return;
+    }
+    
+    const success = await taskService.completeTask(user.id, taskId);
+    if (success) {
+      // Update local state
+      setCompletedTaskIds(prev => {
+        const newSet = new Set(prev);
+        newSet.add(taskId);
+        return newSet;
+      });
+      
+      // Update points
+      const points = await taskService.getUserPoints(user.id);
+      setUserPoints(points);
     }
   };
 
-  const claimRewards = () => {
-    const totalPoints = [
-      ...dailyTasks.filter(t => t.completed), 
-      ...weeklyTasks.filter(t => t.completed), 
-      ...socialTasks.filter(t => t.completed)
-    ].reduce((sum, task) => sum + task.points, 0);
-    
-    if (totalPoints > 0) {
-      toast.success(`Claimed ${totalPoints} points!`);
-    } else {
-      toast.error("No completed tasks to claim rewards from.");
+  const claimRewards = async () => {
+    if (!user) {
+      toast.error("Please login to claim rewards");
+      return;
     }
+    
+    setClaimingRewards(true);
+    await taskService.claimRewards(user.id);
+    setClaimingRewards(false);
   };
 
   const shareSocial = (platform: string) => {
     toast.success(`Opening ${platform} share dialog...`);
   };
+  
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -110,14 +137,15 @@ const ContentPage = () => {
                 <div key={task.id} className="flex items-center space-x-3 bg-sphere-card-dark p-3 rounded-md">
                   <Checkbox 
                     id={task.id} 
-                    checked={task.completed}
-                    onCheckedChange={() => toggleTaskCompletion(task.id, 'daily')}
-                    className={task.completed ? "bg-sphere-green border-sphere-green" : ""}
+                    checked={completedTaskIds.has(task.id)}
+                    onCheckedChange={() => toggleTaskCompletion(task.id)}
+                    className={completedTaskIds.has(task.id) ? "bg-sphere-green border-sphere-green" : ""}
+                    disabled={completedTaskIds.has(task.id)}
                   />
                   <label
                     htmlFor={task.id}
                     className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
-                      task.completed ? "line-through text-gray-500" : "text-white"
+                      completedTaskIds.has(task.id) ? "line-through text-gray-500" : "text-white"
                     }`}
                   >
                     {task.title}
@@ -146,14 +174,15 @@ const ContentPage = () => {
                 <div key={task.id} className="flex items-center space-x-3 bg-sphere-card-dark p-3 rounded-md">
                   <Checkbox 
                     id={task.id} 
-                    checked={task.completed}
-                    onCheckedChange={() => toggleTaskCompletion(task.id, 'weekly')}
-                    className={task.completed ? "bg-sphere-green border-sphere-green" : ""}
+                    checked={completedTaskIds.has(task.id)}
+                    onCheckedChange={() => toggleTaskCompletion(task.id)}
+                    className={completedTaskIds.has(task.id) ? "bg-sphere-green border-sphere-green" : ""}
+                    disabled={completedTaskIds.has(task.id)}
                   />
                   <label
                     htmlFor={task.id}
                     className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
-                      task.completed ? "line-through text-gray-500" : "text-white"
+                      completedTaskIds.has(task.id) ? "line-through text-gray-500" : "text-white"
                     }`}
                   >
                     {task.title}
@@ -183,14 +212,15 @@ const ContentPage = () => {
               <div key={task.id} className="flex items-center space-x-3 bg-sphere-card-dark p-3 rounded-md">
                 <Checkbox 
                   id={task.id} 
-                  checked={task.completed}
-                  onCheckedChange={() => toggleTaskCompletion(task.id, 'social')}
-                  className={task.completed ? "bg-sphere-green border-sphere-green" : ""}
+                  checked={completedTaskIds.has(task.id)}
+                  onCheckedChange={() => toggleTaskCompletion(task.id)}
+                  className={completedTaskIds.has(task.id) ? "bg-sphere-green border-sphere-green" : ""}
+                  disabled={completedTaskIds.has(task.id)}
                 />
                 <label
                   htmlFor={task.id}
                   className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
-                    task.completed ? "line-through text-gray-500" : "text-white"
+                    completedTaskIds.has(task.id) ? "line-through text-gray-500" : "text-white"
                   }`}
                 >
                   {task.title}
@@ -247,14 +277,19 @@ const ContentPage = () => {
         <CardContent className="p-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-bold mb-1">Ready to Claim</h2>
-              <p className="text-gray-400 text-sm">Complete tasks to earn rewards</p>
+              <h2 className="text-xl font-bold mb-1">Your Points: {userPoints}</h2>
+              <p className="text-gray-400 text-sm">Complete tasks to earn more points</p>
             </div>
             <Button 
               className="bg-sphere-green text-black hover:bg-green-400"
               onClick={claimRewards}
+              disabled={claimingRewards}
             >
-              <Check className="mr-2 h-4 w-4" />
+              {claimingRewards ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="mr-2 h-4 w-4" />
+              )}
               Claim Rewards
             </Button>
           </div>
