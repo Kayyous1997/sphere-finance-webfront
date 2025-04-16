@@ -49,8 +49,8 @@ const HomePartnersSection = () => {
       
       <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
         {partners.map((partner, index) => (
-          <div key={index} className="bg-sphere-card-dark border border-gray-700 hover:border-sphere-green rounded-lg p-6 transition-all duration-300 flex flex-col items-center text-center hover:transform hover:-translate-y-1">
-            <div className="bg-black/30 p-4 rounded-lg mb-4 w-24 h-24 flex items-center justify-center">
+          <div key={index} className="glass-card p-6 transition-all duration-300 flex flex-col items-center text-center hover:transform hover:-translate-y-1 hover:border-sphere-green">
+            <div className="bg-black/50 p-4 rounded-lg mb-4 w-24 h-24 flex items-center justify-center">
               <img 
                 src={partner.logo} 
                 alt={`${partner.name} logo`} 
@@ -63,13 +63,13 @@ const HomePartnersSection = () => {
         ))}
       </div>
       
-      <div className="mt-16 bg-gradient-to-r from-sphere-card to-sphere-card-dark p-8 rounded-lg text-center">
+      <div className="mt-16 glass-card p-8 text-center">
         <h3 className="text-2xl font-bold mb-4">Become a Partner</h3>
         <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
           Interested in partnering with Sphere Finance? We're always looking for strategic collaborations to 
           expand our ecosystem and create mutual value.
         </p>
-        <button className="bg-sphere-green text-black px-6 py-3 rounded-lg font-medium hover:bg-sphere-blue transition-colors">
+        <button className="bg-sphere-green text-black px-6 py-3 rounded-lg font-medium hover:bg-opacity-80 transition-colors">
           Contact Our Partnership Team
         </button>
       </div>

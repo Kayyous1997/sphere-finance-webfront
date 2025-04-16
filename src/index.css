@@ -122,10 +122,22 @@
   }
   
   .card-gradient {
-    @apply bg-gradient-to-br from-sphere-card to-sphere-card-dark backdrop-blur-md bg-opacity-80 border border-white/10;
+    @apply bg-gradient-to-br from-sphere-card/80 to-sphere-card-dark/80 backdrop-blur-md border border-white/10;
   }
   
   .glass-effect {
     @apply backdrop-blur-md bg-black/30 border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-black/40 backdrop-blur-lg border border-white/10 rounded-lg;
+  }
+
+  .glass-panel {
+    @apply bg-black/20 backdrop-blur-md border border-white/5 rounded-lg;
+  }
+
+  .glass-input {
+    @apply bg-black/30 border-gray-700 focus:border-sphere-green focus:ring-1 focus:ring-sphere-green text-white placeholder:text-gray-400;
   }
 }

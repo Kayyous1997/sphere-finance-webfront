@@ -1,5 +1,5 @@
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import AuthHero from "@/components/auth/AuthHero";
@@ -28,7 +28,7 @@ const Index = () => {
               <Button className="bg-sphere-green text-black hover:bg-green-400" asChild>
                 <Link to="/mining">Start Mining</Link>
               </Button>
-              <Button variant="outline" asChild>
+              <Button variant="outline" className="border-white/20 bg-black/30 hover:bg-black/50" asChild>
                 <a href="#tokenomics">Explore Tokenomics</a>
               </Button>
             </div>
@@ -39,27 +39,27 @@ const Index = () => {
         </div>
       </section>
       
-      <Separator className="bg-gray-800" />
+      <Separator className="bg-white/10" />
       
       {/* About Section */}
       <HomeAboutSection />
       
-      <Separator className="bg-gray-800" />
+      <Separator className="bg-white/10" />
       
       {/* Project Overview */}
       <HomeOverviewSection />
       
-      <Separator className="bg-gray-800" />
+      <Separator className="bg-white/10" />
       
       {/* Roadmap */}
       <HomeRoadmapSection />
       
-      <Separator className="bg-gray-800" />
+      <Separator className="bg-white/10" />
       
       {/* Tokenomics */}
       <HomeTokenomicsSection />
       
-      <Separator className="bg-gray-800" />
+      <Separator className="bg-white/10" />
       
       {/* Partners */}
       <HomePartnersSection />

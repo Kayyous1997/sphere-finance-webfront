@@ -8,7 +8,6 @@ import AuthHero from "@/components/auth/AuthHero";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import WalletConnection from "@/components/auth/WalletConnection";
-import { Button } from "@/components/ui/button";
 
 const AuthPage = () => {
   const { user } = useAuth();
@@ -65,7 +64,7 @@ const AuthPage = () => {
           
           <div className="w-full md:w-2/5 order-1 md:order-2">
             {!walletAddress ? (
-              <Card className="bg-sphere-card border-gray-800 bg-opacity-80 backdrop-blur-md">
+              <Card className="glass-card border-gray-800">
                 <CardContent className="pt-6 pb-6">
                   <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold mb-3">Connect Your Wallet</h2>
@@ -82,7 +81,7 @@ const AuthPage = () => {
                 </CardContent>
               </Card>
             ) : !walletVerified ? (
-              <Card className="bg-sphere-card border-gray-800 bg-opacity-80 backdrop-blur-md">
+              <Card className="glass-card border-gray-800">
                 <CardContent className="pt-6 pb-6">
                   <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold mb-3">Verify Your Wallet</h2>
@@ -106,7 +105,7 @@ const AuthPage = () => {
                 </TabsList>
                 
                 <TabsContent value="login">
-                  <Card className="bg-sphere-card border-gray-800 bg-opacity-80 backdrop-blur-md">
+                  <Card className="glass-card border-gray-800">
                     <CardContent className="pt-6">
                       <LoginForm 
                         onSuccess={() => navigate("/mining")} 

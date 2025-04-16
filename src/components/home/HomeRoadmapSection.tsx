@@ -1,6 +1,5 @@
 
 import { Calendar } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 
 const HomeRoadmapSection = () => {
   const roadmapItems = [
@@ -73,7 +72,7 @@ const HomeRoadmapSection = () => {
                 {index % 2 === 0 ? (
                   <>
                     <div className="md:text-right md:pr-12">
-                      <div className="bg-gradient-to-r from-sphere-card to-sphere-card-dark p-6 rounded-lg">
+                      <div className="glass-card p-6">
                         <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium mb-3 ${
                           item.status === 'upcoming' ? 'bg-yellow-900/50 text-yellow-400' : 'bg-blue-900/50 text-blue-400'
                         }`}>
@@ -94,7 +93,7 @@ const HomeRoadmapSection = () => {
                   <>
                     <div className="hidden md:block"></div>
                     <div className="md:pl-12">
-                      <div className="bg-gradient-to-r from-sphere-card to-sphere-card-dark p-6 rounded-lg">
+                      <div className="glass-card p-6">
                         <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium mb-3 ${
                           item.status === 'upcoming' ? 'bg-yellow-900/50 text-yellow-400' : 'bg-blue-900/50 text-blue-400'
                         }`}>

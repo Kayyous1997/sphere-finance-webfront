@@ -17,7 +17,7 @@ const HomeAboutSection = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Card className="card-gradient">
+        <Card className="glass-card">
           <CardContent className="p-6">
             <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
             <p className="mb-4 text-gray-300">
@@ -31,7 +31,7 @@ const HomeAboutSection = () => {
           </CardContent>
         </Card>
         
-        <Card className="card-gradient">
+        <Card className="glass-card">
           <CardContent className="p-6">
             <h3 className="text-2xl font-bold mb-4">Our Vision</h3>
             <p className="mb-4 text-gray-300">
@@ -45,7 +45,7 @@ const HomeAboutSection = () => {
           </CardContent>
         </Card>
         
-        <Card className="card-gradient">
+        <Card className="glass-card">
           <CardContent className="p-6">
             <h3 className="text-2xl font-bold mb-4">Core Values</h3>
             <ul className="space-y-2 text-gray-300">

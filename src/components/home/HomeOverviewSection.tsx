@@ -3,7 +3,7 @@ import { LayoutDashboard, Shield, Zap, Cpu } from "lucide-react";
 
 const HomeOverviewSection = () => {
   return (
-    <section id="overview" className="container mx-auto px-4 py-16 md:py-24 bg-sphere-dark">
+    <section id="overview" className="container mx-auto px-4 py-16 md:py-24">
       <div className="text-center mb-12">
         <h2 className="text-3xl md:text-4xl font-bold mb-4 inline-flex items-center">
           <LayoutDashboard className="mr-2 h-8 w-8 text-sphere-green" />
@@ -17,7 +17,7 @@ const HomeOverviewSection = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-16">
         <div className="flex">
           <div className="flex-shrink-0 mr-6">
-            <div className="w-16 h-16 bg-sphere-card-dark rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 glass-panel rounded-full flex items-center justify-center">
               <Cpu className="h-8 w-8 text-sphere-green" />
             </div>
           </div>
@@ -33,7 +33,7 @@ const HomeOverviewSection = () => {
         
         <div className="flex">
           <div className="flex-shrink-0 mr-6">
-            <div className="w-16 h-16 bg-sphere-card-dark rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 glass-panel rounded-full flex items-center justify-center">
               <Shield className="h-8 w-8 text-sphere-green" />
             </div>
           </div>
@@ -49,7 +49,7 @@ const HomeOverviewSection = () => {
         
         <div className="flex">
           <div className="flex-shrink-0 mr-6">
-            <div className="w-16 h-16 bg-sphere-card-dark rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 glass-panel rounded-full flex items-center justify-center">
               <Zap className="h-8 w-8 text-sphere-green" />
             </div>
           </div>
@@ -65,7 +65,7 @@ const HomeOverviewSection = () => {
         
         <div className="flex">
           <div className="flex-shrink-0 mr-6">
-            <div className="w-16 h-16 bg-sphere-card-dark rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 glass-panel rounded-full flex items-center justify-center">
               <svg className="h-8 w-8 text-sphere-green" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M3 22C3 17.0294 7.02944 13 12 13C16.9706 13 21 17.0294 21 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
