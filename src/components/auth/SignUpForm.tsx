@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,9 +6,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { signUp } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -18,7 +22,15 @@ const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Password validation
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
+
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
@@ -53,11 +65,42 @@ const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     
     try {
       setLoading(true);
-      await signUp(email, password);
+      
+      const { data, error } = await signUp(email, password);
+      
+      if (error) throw error;
+      
+      if (referralCode && data?.user) {
+        const { data: referrerData, error: referrerError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('referral_code', referralCode)
+          .single();
+        
+        if (referrerError) throw referrerError;
+        
+        if (referrerData) {
+          const { error: referralError } = await supabase
+            .from('referrals')
+            .insert({
+              referrer_id: referrerData.id,
+              referred_id: data.user.id
+            });
+          
+          if (referralError) throw referralError;
+          
+          await supabase
+            .from('profiles')
+            .update({ referred_by: referrerData.id })
+            .eq('id', data.user.id);
+        }
+      }
+      
       toast.success("Check your email for the confirmation link!");
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error("Sign up error:", error);
+      toast.error(String(error));
     } finally {
       setLoading(false);
     }

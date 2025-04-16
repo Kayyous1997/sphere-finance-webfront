@@ -128,6 +128,8 @@ export type Database = {
           updated_at: string
           username: string | null
           wallet_address: string | null
+          wallet_signature: string | null
+          wallet_verified: boolean | null
         }
         Insert: {
           created_at?: string
@@ -140,6 +142,8 @@ export type Database = {
           updated_at?: string
           username?: string | null
           wallet_address?: string | null
+          wallet_signature?: string | null
+          wallet_verified?: boolean | null
         }
         Update: {
           created_at?: string
@@ -152,6 +156,8 @@ export type Database = {
           updated_at?: string
           username?: string | null
           wallet_address?: string | null
+          wallet_signature?: string | null
+          wallet_verified?: boolean | null
         }
         Relationships: [
           {
@@ -162,6 +168,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          id: string
+          points_awarded: boolean | null
+          referred_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          points_awarded?: boolean | null
+          referred_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          points_awarded?: boolean | null
+          referred_id?: string
+          referrer_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
