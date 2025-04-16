@@ -46,9 +46,9 @@ const SignUpForm = ({
     const ref = searchParams.get('ref');
     if (ref) {
       setReferralCode(ref);
-      navigate(location.pathname, { replace: true });
+      // Don't navigate away - just store the ref code
     }
-  }, [prefilledEmail, location, navigate]);
+  }, [prefilledEmail, location]);
 
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
@@ -107,7 +107,7 @@ const SignUpForm = ({
       
       if (error) throw error;
       
-      // Process referral
+      // Process referral if a referral code was provided
       if (referralCode && data?.user) {
         try {
           const { data: referrerData, error: referrerError } = await supabase
@@ -151,7 +151,7 @@ const SignUpForm = ({
       
       toast.success("Check your email for the confirmation link!");
       if (onSuccess) onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sign up error:", error);
       toast.error(String(error));
     } finally {

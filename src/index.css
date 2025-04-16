@@ -92,6 +92,11 @@
 
   body {
     @apply bg-sphere-darker text-foreground;
+    background-image: url('/lovable-uploads/42b23ec5-3db2-441b-9eea-fb40e078f5c6.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
 }
 

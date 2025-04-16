@@ -17,7 +17,12 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 
-const LoginForm = ({ onSuccess }: { onSuccess?: () => void }) => {
+interface LoginFormProps {
+  onSuccess?: () => void;
+  prefilledWalletAddress?: string | null;
+}
+
+const LoginForm = ({ onSuccess, prefilledWalletAddress }: LoginFormProps) => {
   const { signIn, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -45,6 +50,12 @@ const LoginForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     try {
       setLoading(true);
       await signIn(email, password);
+      
+      // If wallet is connected, update the user's profile
+      if (prefilledWalletAddress) {
+        localStorage.setItem('walletAddress', prefilledWalletAddress);
+      }
+      
       if (onSuccess) onSuccess();
       // Redirect to mining dashboard after successful login
       navigate("/mining");

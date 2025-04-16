@@ -10,30 +10,46 @@ import SignUpForm from "./SignUpForm";
 import WalletConnection from "./WalletConnection";
 import { supabase } from "@/integrations/supabase/client";
 
-const WalletFirstSignUp = () => {
+interface WalletFirstSignUpProps {
+  walletAddress?: string | null;
+  walletVerified?: boolean;
+}
+
+const WalletFirstSignUp = ({ walletAddress: propWalletAddress, walletVerified: propWalletVerified }: WalletFirstSignUpProps) => {
   const [step, setStep] = useState<'connect' | 'verify' | 'signup'>('connect');
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [walletVerified, setWalletVerified] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(propWalletAddress || null);
+  const [walletVerified, setWalletVerified] = useState(propWalletVerified || false);
   const [email, setEmail] = useState("");
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    // Check if wallet is connected from local storage
-    const storedWallet = localStorage.getItem('walletAddress');
-    const storedVerification = localStorage.getItem('walletVerified');
-    
-    if (storedWallet) {
-      setWalletAddress(storedWallet);
-      
-      // If wallet is already verified, move to signup step
-      if (storedVerification === 'true') {
+    // Update state if props change
+    if (propWalletAddress) {
+      setWalletAddress(propWalletAddress);
+      if (propWalletVerified) {
         setWalletVerified(true);
         setStep('signup');
       } else {
         setStep('verify');
       }
+    } else {
+      // Check if wallet is connected from local storage
+      const storedWallet = localStorage.getItem('walletAddress');
+      const storedVerification = localStorage.getItem('walletVerified');
+      
+      if (storedWallet) {
+        setWalletAddress(storedWallet);
+        
+        // If wallet is already verified, move to signup step
+        if (storedVerification === 'true') {
+          setWalletVerified(true);
+          setStep('signup');
+        } else {
+          setStep('verify');
+        }
+      }
     }
-  }, []);
+  }, [propWalletAddress, propWalletVerified]);
 
   // When wallet is connected in the WalletConnection component
   const handleWalletConnected = (address: string) => {
@@ -80,7 +96,7 @@ const WalletFirstSignUp = () => {
   };
 
   return (
-    <Card className="bg-sphere-card border-gray-800 w-full max-w-md mx-auto">
+    <Card className="bg-sphere-card border-gray-800 bg-opacity-80 backdrop-blur-md w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle className="text-center text-xl font-bold">
           {step === 'connect' && "Connect Your Wallet"}
@@ -149,6 +165,12 @@ const WalletFirstSignUp = () => {
               >
                 {checking ? "Checking..." : "Continue"}
               </Button>
+            </div>
+
+            <div className="flex justify-center pt-2">
+              <WalletConnection 
+                onWalletVerified={handleWalletVerified} 
+              />
             </div>
           </div>
         )}
