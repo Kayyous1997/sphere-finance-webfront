@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -14,6 +15,7 @@ export interface MiningSession {
   rewards_earned: number;
   status: 'active' | 'completed' | 'terminated';
   worker_details: any;
+  is_offline?: boolean; // Flag to indicate offline mining
 }
 
 export interface MiningWorker {
@@ -43,17 +45,25 @@ export interface ReferralInfo {
 
 export const miningService = {
   // Session management
-  async startMining(userId: string, workerData: any): Promise<MiningSession> {
+  async startMining(userId: string, workerData: any, isOffline = false): Promise<MiningSession> {
     try {
+      const sessionData = {
+        action: 'startMining', 
+        userId, 
+        workerData,
+        isOffline
+      };
+
       const { data, error } = await supabase.functions.invoke('manage-mining', {
-        body: { action: 'startMining', userId, workerData }
+        body: sessionData
       });
       
       if (error) throw error;
       // Cast the status to the expected type
       return {
         ...data.session,
-        status: data.session.status as 'active' | 'completed' | 'terminated'
+        status: data.session.status as 'active' | 'completed' | 'terminated',
+        is_offline: isOffline
       };
     } catch (error) {
       console.error('Error starting mining session:', error);
@@ -131,6 +141,94 @@ export const miningService = {
     } catch (error) {
       console.error('Error getting active mining session:', error);
       return null;
+    }
+  },
+  
+  async getOfflineMiningStats(userId: string): Promise<{
+    totalHashrate: number;
+    totalShares: number;
+    totalRewards: number;
+  }> {
+    try {
+      // Get the user's mining stats from the profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('hashrate, total_shares, mining_rewards')
+        .eq('id', userId)
+        .single();
+        
+      if (error) throw error;
+      
+      return {
+        totalHashrate: data?.hashrate || 0,
+        totalShares: data?.total_shares || 0,
+        totalRewards: data?.mining_rewards || 0
+      };
+    } catch (error) {
+      console.error('Error getting offline mining stats:', error);
+      return {
+        totalHashrate: 0,
+        totalShares: 0,
+        totalRewards: 0
+      };
+    }
+  },
+  
+  async startOfflineMining(userId: string): Promise<boolean> {
+    try {
+      // Generate simulated mining stats based on the user's profile
+      const baseHashrate = Math.floor(Math.random() * 50) + 10; // 10-60 MH/s base rate
+      
+      // Start an offline mining session
+      await this.startMining(userId, {
+        hashrate: baseHashrate,
+        worker_type: 'offline',
+        hardware_details: {
+          type: 'offline',
+          name: 'Offline Miner'
+        }
+      }, true);
+      
+      return true;
+    } catch (error) {
+      console.error('Error starting offline mining:', error);
+      return false;
+    }
+  },
+  
+  // Return total mining stats (combining online and offline)
+  async getTotalMiningStats(userId: string): Promise<{
+    combinedHashrate: number;
+    combinedShares: number;
+    combinedRewards: number;
+    onlineActive: boolean;
+    offlineActive: boolean;
+  }> {
+    try {
+      // Get online mining stats from active session
+      const activeSession = await this.getActiveMiningSession(userId);
+      const onlineActive = !!activeSession && !activeSession.is_offline;
+      
+      // Get offline mining stats
+      const offlineStats = await this.getOfflineMiningStats(userId);
+      const offlineActive = !!activeSession?.is_offline;
+      
+      return {
+        combinedHashrate: (activeSession?.total_hashrate || 0) + offlineStats.totalHashrate,
+        combinedShares: (activeSession?.shares_accepted || 0) + offlineStats.totalShares,
+        combinedRewards: (activeSession?.rewards_earned || 0) + offlineStats.totalRewards,
+        onlineActive,
+        offlineActive
+      };
+    } catch (error) {
+      console.error('Error getting total mining stats:', error);
+      return {
+        combinedHashrate: 0,
+        combinedShares: 0,
+        combinedRewards: 0,
+        onlineActive: false,
+        offlineActive: false
+      };
     }
   },
   

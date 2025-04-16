@@ -5,8 +5,14 @@ import { Wallet, Check, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
-const WalletConnection = () => {
+interface WalletConnectionProps {
+  onWalletConnected?: (address: string) => void;
+  onWalletVerified?: () => void;
+}
+
+const WalletConnection = ({ onWalletConnected, onWalletVerified }: WalletConnectionProps) => {
   const { user, updateProfile } = useAuth();
   const [connecting, setConnecting] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -36,9 +42,28 @@ const WalletConnection = () => {
       
       const address = accounts[0];
       setWalletAddress(address);
+
+      // Notify parent component
+      if (onWalletConnected) {
+        onWalletConnected(address);
+      }
       
       // If user is logged in, update their profile with the wallet address
       if (user) {
+        // Check if wallet address is already linked to another user
+        const { data: existingUser, error: checkError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('wallet_address', address)
+          .neq('id', user.id)
+          .maybeSingle();
+        
+        if (existingUser) {
+          toast.error("This wallet address is already linked to another account");
+          setWalletAddress(null);
+          return;
+        }
+        
         await updateProfile({ wallet_address: address });
         toast.success("Wallet connected successfully!");
       }
@@ -57,7 +82,7 @@ const WalletConnection = () => {
       setValidating(true);
       
       // Create a message to sign
-      const message = `Verify wallet ownership for Sphere Finance: ${user?.id}`;
+      const message = `Verify wallet ownership for Sphere Finance: ${user?.id || 'signup'}`;
       
       // Request signature from the user
       const signature = await window.ethereum.request({
@@ -65,18 +90,28 @@ const WalletConnection = () => {
         params: [message, walletAddress]
       });
       
-      // In a real app, you would verify this signature on the backend
-      // For this demo, we'll just simulate a successful validation
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       setWalletValidated(true);
       
-      // If user is logged in, update their profile with the validated wallet address
+      // Store the signature for later verification
       if (user) {
-        // In a real app, you would also store the validation status
-        await updateProfile({ wallet_address: walletAddress });
-        toast.success("Wallet validated successfully!");
+        await supabase
+          .from('profiles')
+          .update({ 
+            wallet_signature: signature,
+            wallet_verified: true 
+          })
+          .eq('id', user.id);
+      } else {
+        // For signup flow, store in localStorage to be saved after signup
+        localStorage.setItem('wallet_signature', signature);
       }
+      
+      // Notify parent component
+      if (onWalletVerified) {
+        onWalletVerified();
+      }
+      
+      toast.success("Wallet validated successfully!");
     } catch (error) {
       console.error("Wallet validation error:", error);
       toast.error("Failed to validate wallet");

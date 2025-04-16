@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -9,12 +10,24 @@ import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
+interface SignUpFormProps {
+  onSuccess?: () => void;
+  prefilledEmail?: string;
+  prefilledWalletAddress?: string;
+  walletVerified?: boolean;
+}
+
+const SignUpForm = ({ 
+  onSuccess,
+  prefilledEmail = "",
+  prefilledWalletAddress = "",
+  walletVerified = false
+}: SignUpFormProps) => {
   const { signUp } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,13 +36,19 @@ const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
+    // Set email if provided
+    if (prefilledEmail) {
+      setEmail(prefilledEmail);
+    }
+
+    // Extract referral code from URL
     const searchParams = new URLSearchParams(location.search);
     const ref = searchParams.get('ref');
     if (ref) {
       setReferralCode(ref);
       navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+  }, [prefilledEmail, location, navigate]);
 
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
@@ -62,6 +81,24 @@ const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       toast.error("Passwords do not match");
       return;
     }
+
+    // Check if email is already linked to a different wallet
+    if (prefilledWalletAddress) {
+      try {
+        const { data: existingUser, error: userError } = await supabase
+          .from('profiles')
+          .select('wallet_address')
+          .eq('email', email)
+          .single();
+        
+        if (existingUser && existingUser.wallet_address !== prefilledWalletAddress) {
+          toast.error("This email is already linked to a different wallet address");
+          return;
+        }
+      } catch (error) {
+        // Ignore if user doesn't exist yet
+      }
+    }
     
     try {
       setLoading(true);
@@ -70,30 +107,46 @@ const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       
       if (error) throw error;
       
+      // Process referral
       if (referralCode && data?.user) {
-        const { data: referrerData, error: referrerError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('referral_code', referralCode)
-          .single();
-        
-        if (referrerError) throw referrerError;
-        
-        if (referrerData) {
-          const { error: referralError } = await supabase
-            .from('referrals')
-            .insert({
-              referrer_id: referrerData.id,
-              referred_id: data.user.id
-            });
-          
-          if (referralError) throw referralError;
-          
-          await supabase
+        try {
+          const { data: referrerData, error: referrerError } = await supabase
             .from('profiles')
-            .update({ referred_by: referrerData.id })
-            .eq('id', data.user.id);
+            .select('id')
+            .eq('referral_code', referralCode)
+            .single();
+          
+          if (referrerError) {
+            console.error("Referrer lookup error:", referrerError);
+          } else if (referrerData) {
+            // Add referral record
+            await supabase
+              .from('referrals')
+              .insert({
+                referrer_id: referrerData.id,
+                referred_id: data.user.id
+              });
+            
+            // Update user profile with referrer
+            await supabase
+              .from('profiles')
+              .update({ referred_by: referrerData.id })
+              .eq('id', data.user.id);
+          }
+        } catch (err) {
+          console.error("Referral processing error:", err);
         }
+      }
+      
+      // Update wallet info if provided
+      if (data?.user && prefilledWalletAddress) {
+        await supabase
+          .from('profiles')
+          .update({ 
+            wallet_address: prefilledWalletAddress,
+            wallet_verified: walletVerified 
+          })
+          .eq('id', data.user.id);
       }
       
       toast.success("Check your email for the confirmation link!");
@@ -116,6 +169,7 @@ const SignUpForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          disabled={!!prefilledEmail}
           required
           className="bg-sphere-card-dark border-gray-800"
         />
