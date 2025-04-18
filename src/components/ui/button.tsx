@@ -10,14 +10,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-sphere-green text-white hover:bg-sphere-blue",
+        default: "bg-sphere-light-green text-black hover:bg-sphere-green",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-sphere-green bg-background hover:bg-sphere-light-green hover:text-black",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+          "bg-sphere-green text-black hover:bg-sphere-light-green",
+        ghost: "hover:bg-sphere-light-green hover:text-black",
         link: "text-sphere-green underline-offset-4 hover:underline",
       },
       size: {
@@ -55,3 +55,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
+

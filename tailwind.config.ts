@@ -54,11 +54,14 @@ export default {
         },
         sphere: {
           green: '#90EE90',
+          'light-green': '#F2FCE2',
           blue: '#98FB98',
           dark: '#1A1F2C',
           darker: '#0B0D14',
           card: '#1C1F2E',
           'card-dark': '#171A27',
+          primary: '#90EE90',
+          secondary: '#F2FCE2'
         },
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',
