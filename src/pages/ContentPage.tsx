@@ -40,7 +40,7 @@ const ContentPage = () => {
         setSocialTasks(social);
         
         // Mark completed tasks
-        const completedIds = new Set(userCompleted.map(ut => ut.task_id));
+        const completedIds = new Set<string>(userCompleted.map(ut => ut.task_id));
         setCompletedTaskIds(completedIds);
         
         // Get user points
@@ -63,17 +63,18 @@ const ContentPage = () => {
       return;
     }
     
-    const success = await taskService.completeTask(user.id, taskId);
-    if (success) {
-      setCompletedTaskIds(prev => {
-        const newSet = new Set(prev);
-        newSet.add(taskId);
-        return newSet;
-      });
-      
-      const points = await taskService.getUserPoints(user.id);
-      setUserPoints(points);
-    }
+    await taskService.completeTask(user.id, taskId);
+    
+    // Update local state without refetching all tasks
+    setCompletedTaskIds(prev => {
+      const newSet = new Set(prev);
+      newSet.add(taskId);
+      return newSet;
+    });
+    
+    // Update user points
+    const points = await taskService.getUserPoints(user.id);
+    setUserPoints(points);
   };
 
   const handleClaimRewards = async () => {
