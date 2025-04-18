@@ -1,158 +1,76 @@
-
+import { type Task, type UserTask } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Task types
-export interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  type: 'daily' | 'weekly' | 'social';
-  points: number;
-  created_at: string;
-  updated_at: string;
-}
+export const fetchTasks = async (): Promise<Task[]> => {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*");
 
-export interface UserTask {
-  id: string;
-  user_id: string;
-  task_id: string;
-  completed_at: string;
-  task?: Task;
-}
+  if (error) {
+    console.error("Error fetching tasks:", error);
+    throw error;
+  }
 
-export const taskService = {
-  // Get all available tasks
-  async getTasks(): Promise<Task[]> {
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*');
-        
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      return [];
-    }
-  },
+  return data.map(task => ({
+    ...task,
+    type: task.type as "daily" | "weekly" | "social"
+  }));
+};
+
+export const fetchUserTasks = async (userId: string): Promise<UserTask[]> => {
+  const { data, error } = await supabase
+    .from("user_tasks")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error fetching user tasks:", error);
+    return [];
+  }
+
+  return data || [];
+};
+
+export const completeTask = async (userId: string, taskId: string): Promise<void> => {
+  const { data, error } = await supabase
+    .from("user_tasks")
+    .insert([{ user_id: userId, task_id: taskId }]);
+
+  if (error) {
+    console.error("Error completing task:", error);
+    toast.error("Failed to complete task.");
+  } else {
+    toast.success("Task completed!");
+  }
+};
+
+export const uncompleteTask = async (userId: string, taskId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("user_tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("task_id", taskId);
+
+  if (error) {
+    console.error("Error uncompleting task:", error);
+    toast.error("Failed to uncomplete task.");
+  } else {
+    toast.success("Task uncompleted!");
+  }
+};
   
-  // Get tasks completed by a user
-  async getUserCompletedTasks(userId: string): Promise<UserTask[]> {
-    try {
-      const { data, error } = await supabase
-        .from('user_tasks')
-        .select('*, task:task_id(*)')
-        .eq('user_id', userId);
-        
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching user tasks:', error);
-      return [];
-    }
-  },
-  
-  // Get tasks by type
-  async getTasksByType(type: 'daily' | 'weekly' | 'social'): Promise<Task[]> {
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('type', type)
-        .order('points', { ascending: false });
-        
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error(`Error fetching ${type} tasks:`, error);
-      return [];
-    }
-  },
-  
-  // Complete a task
-  async completeTask(userId: string, taskId: string): Promise<boolean> {
-    try {
-      // First check if task is already completed
-      const { data: existingTask, error: checkError } = await supabase
-        .from('user_tasks')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('task_id', taskId)
-        .maybeSingle();
-        
-      if (checkError) throw checkError;
-      
-      if (existingTask) {
-        toast.error("You've already completed this task");
-        return false;
-      }
-      
-      // Complete the task
-      const { error } = await supabase
-        .from('user_tasks')
-        .insert({
-          user_id: userId,
-          task_id: taskId
-        });
-        
-      if (error) throw error;
-      
-      // Update user points in profile
-      const { data: taskData } = await supabase
-        .from('tasks')
-        .select('points')
-        .eq('id', taskId)
-        .single();
-      
-      if (taskData) {
-        const { error: pointsError } = await supabase
-          .from('profiles')
-          .update({ 
-            points: supabase.rpc('increment', { 
-              x: taskData.points 
-            })
-          })
-          .eq('id', userId);
-          
-        if (pointsError) throw pointsError;
-      }
-      
-      toast.success(`Task completed! +${taskData?.points || 0} points`);
-      return true;
-    } catch (error) {
-      console.error('Error completing task:', error);
-      toast.error('Failed to complete task');
-      return false;
-    }
-  },
-  
-  // Get user total points
-  async getUserPoints(userId: string): Promise<number> {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('points')
-        .eq('id', userId)
-        .single();
-        
-      if (error) throw error;
-      return data?.points || 0;
-    } catch (error) {
-      console.error('Error fetching user points:', error);
-      return 0;
-    }
-  },
-  
-  // Claim all completed tasks points
-  async claimRewards(userId: string): Promise<boolean> {
-    try {
-      toast.success("All rewards claimed successfully!");
-      return true;
-    } catch (error) {
-      console.error('Error claiming rewards:', error);
-      toast.error('Failed to claim rewards');
-      return false;
-    }
+export const applyReferralCode = async (userId: string, referralCode: string): Promise<void> => {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .update({ referred_by: referralCode })
+    .eq('id', userId)
+    .select();
+
+  if (error) {
+    console.error("Error applying referral code:", error);
+    toast.error("Failed to apply referral code.");
+  } else {
+    toast.success("Referral code applied successfully!");
   }
 };
