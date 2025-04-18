@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
@@ -16,13 +15,11 @@ import {
 
 const NavItem = ({ 
   href, 
-  children, 
-  isNew = false,
+  children,
   onClick
 }: { 
   href: string; 
-  children: React.ReactNode; 
-  isNew?: boolean;
+  children: React.ReactNode;
   onClick?: () => void;
 }) => (
   <Link 
@@ -31,11 +28,6 @@ const NavItem = ({
     onClick={onClick}
   >
     {children}
-    {isNew && (
-      <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-medium bg-sphere-green text-black rounded">
-        NEW
-      </span>
-    )}
   </Link>
 );
 
@@ -79,8 +71,6 @@ const Navbar = () => {
               Testnet
             </span>
           </NavItem>
-          <NavItem href="/content" isNew={true}>Content</NavItem>
-          <NavItem href="/premium" isNew={true}>Premium</NavItem>
         </div>
       </div>
       
@@ -151,8 +141,6 @@ const Navbar = () => {
                     Testnet
                   </span>
                 </NavItem>
-                <NavItem href="/content" isNew={true} onClick={closeMobileMenu}>Content</NavItem>
-                <NavItem href="/premium" isNew={true} onClick={closeMobileMenu}>Premium</NavItem>
                 
                 {user ? (
                   <Link to="/mining" onClick={closeMobileMenu}>

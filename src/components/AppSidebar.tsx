@@ -1,10 +1,7 @@
-
 import {
   Home,
   LayoutDashboard,
   Pickaxe,
-  Folders,
-  Crown,
   Book,
   Settings,
 } from "lucide-react";
@@ -38,18 +35,6 @@ const items = [
     icon: Pickaxe,
   },
   {
-    title: "Content",
-    url: "/content",
-    icon: Folders,
-    isNew: true,
-  },
-  {
-    title: "Premium",
-    url: "/premium",
-    icon: Crown,
-    isNew: true,
-  },
-  {
     title: "Docs",
     url: "/docs",
     icon: Book,
@@ -81,11 +66,6 @@ export function AppSidebar() {
                     <Link to={item.url} className="relative">
                       <item.icon />
                       <span>{item.title}</span>
-                      {item.isNew && (
-                        <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-medium bg-sphere-green text-black rounded">
-                          NEW
-                        </span>
-                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

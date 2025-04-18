@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +15,6 @@ import NotFound from "./pages/NotFound";
 import MiningPage from "./pages/MiningPage";
 import WalletConnect from "./pages/WalletConnect";
 import ProfilePage from "./pages/ProfilePage";
-import ContentPage from "./pages/ContentPage";
 import AuthPage from "./pages/AuthPage";
 
 const queryClient = new QueryClient();
@@ -56,7 +54,6 @@ const AppRoutes = () => (
       <Route path="/mining" element={<MiningPage />} />
       <Route path="/connect" element={<WalletConnect />} />
       <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/content" element={<ContentPage />} />
       <Route path="/login" element={<AuthPage />} />
       <Route path="*" element={<NotFound />} />
     </Route>
