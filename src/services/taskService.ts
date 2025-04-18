@@ -6,7 +6,7 @@ import { toast } from "sonner";
 export interface Task {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   type: 'daily' | 'weekly' | 'social';
   points: number;
   created_at: string;
@@ -27,9 +27,7 @@ export const taskService = {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('*')
-        .order('type', { ascending: true })
-        .order('points', { ascending: false });
+        .select('*');
         
       if (error) throw error;
       return data || [];
@@ -55,7 +53,7 @@ export const taskService = {
     }
   },
   
-  // Get tasks by type (daily, weekly, social)
+  // Get tasks by type
   async getTasksByType(type: 'daily' | 'weekly' | 'social'): Promise<Task[]> {
     try {
       const { data, error } = await supabase
@@ -90,15 +88,6 @@ export const taskService = {
         return false;
       }
       
-      // Get task point value
-      const { data: taskData, error: taskError } = await supabase
-        .from('tasks')
-        .select('points')
-        .eq('id', taskId)
-        .single();
-        
-      if (taskError) throw taskError;
-      
       // Complete the task
       const { error } = await supabase
         .from('user_tasks')
@@ -109,19 +98,27 @@ export const taskService = {
         
       if (error) throw error;
       
-      // Update user points
-      const { error: pointsError } = await supabase
-        .from('profiles')
-        .update({ 
-          points: supabase.rpc('increment', { 
-            x: taskData.points 
-          })
-        })
-        .eq('id', userId);
-        
-      if (pointsError) throw pointsError;
+      // Update user points in profile
+      const { data: taskData } = await supabase
+        .from('tasks')
+        .select('points')
+        .eq('id', taskId)
+        .single();
       
-      toast.success(`Task completed! +${taskData.points} points`);
+      if (taskData) {
+        const { error: pointsError } = await supabase
+          .from('profiles')
+          .update({ 
+            points: supabase.rpc('increment', { 
+              x: taskData.points 
+            })
+          })
+          .eq('id', userId);
+          
+        if (pointsError) throw pointsError;
+      }
+      
+      toast.success(`Task completed! +${taskData?.points || 0} points`);
       return true;
     } catch (error) {
       console.error('Error completing task:', error);
@@ -147,10 +144,9 @@ export const taskService = {
     }
   },
   
-  // Claim all completed tasks points (for visual effect, points are already added)
+  // Claim all completed tasks points
   async claimRewards(userId: string): Promise<boolean> {
     try {
-      // Just for visual feedback - points are already added when tasks are completed
       toast.success("All rewards claimed successfully!");
       return true;
     } catch (error) {

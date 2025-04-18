@@ -193,6 +193,65 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          points: number
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          points?: number
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          points?: number
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_tasks: {
+        Row: {
+          completed_at: string | null
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
