@@ -1,5 +1,5 @@
 
-import { Calendar, Circuit, ChevronRight } from "lucide-react";
+import { Calendar, Cpu , ChevronRight } from "lucide-react";
 
 const HomeRoadmapSection = () => {
   const roadmapItems = [
@@ -49,9 +49,9 @@ const HomeRoadmapSection = () => {
     <section id="roadmap" className="container mx-auto px-4 py-16 md:py-24">
       <div className="text-center mb-12 animate-fade-in">
         <h2 className="text-3xl md:text-4xl font-bold mb-4 inline-flex items-center gap-3">
-          <Circuit className="h-8 w-8 text-sphere-green animate-pulse" />
+          <Cpu className="h-8 w-8 text-sphere-green animate-pulse" />
           Project Roadmap
-          <Circuit className="h-8 w-8 text-sphere-green animate-pulse" />
+          <Cpu className="h-8 w-8 text-sphere-green animate-pulse" />
         </h2>
         <p className="text-lg text-gray-300 max-w-3xl mx-auto">
           Our development timeline outlines the key milestones and features planned for Sphere Finance's evolution.
