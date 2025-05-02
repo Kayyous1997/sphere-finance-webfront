@@ -103,7 +103,17 @@ const SignUpForm = ({
     try {
       setLoading(true);
       
-      const { data, error } = await signUp(email, password);
+      // Explicitly define the shape of the response to avoid deep type instantiation
+      interface SignUpResponse {
+        data: { 
+          user: { 
+            id: string 
+          } | null 
+        } | null;
+        error: Error | null;
+      }
+      
+      const { data, error } = await signUp(email, password) as SignUpResponse;
       
       if (error) throw error;
       
