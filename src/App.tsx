@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,14 +34,26 @@ const ReferralHandler = () => {
       if (referralCode && user) {
         console.log(`Detected referral code in URL: ${referralCode} for user: ${user.id}`);
         
-        // Apply referral code and remove from URL
-        const applied = await miningService.applyReferralCode(user.id, referralCode);
-        
-        if (applied) {
-          console.log("Referral successfully applied, clearing URL params");
-          // Clear the referral code from URL
-          navigate(location.pathname, { replace: true });
+        try {
+          // Apply referral code and remove from URL
+          console.log("Attempting to apply referral code");
+          const applied = await miningService.applyReferralCode(user.id, referralCode);
+          
+          if (applied) {
+            console.log("Referral successfully applied, clearing URL params");
+            // Clear the referral code from URL
+            navigate(location.pathname, { replace: true });
+            // Show success notification
+            toast.success("Referral code applied successfully!");
+          } else {
+            console.log("Failed to apply referral code");
+          }
+        } catch (error) {
+          console.error("Error applying referral code:", error);
         }
+      } else if (referralCode) {
+        console.log("Referral code found but user not logged in yet");
+        // Keep the code in URL so it can be applied after login/signup
       }
     };
     

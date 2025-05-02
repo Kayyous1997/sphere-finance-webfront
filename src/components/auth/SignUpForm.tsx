@@ -55,6 +55,7 @@ const SignUpForm = ({
     const searchParams = new URLSearchParams(location.search);
     const ref = searchParams.get('ref');
     if (ref) {
+      console.log("Found referral code in URL:", ref);
       setReferralCode(ref);
       // Don't navigate away - just store the ref code
     }
@@ -114,12 +115,14 @@ const SignUpForm = ({
       setLoading(true);
       
       // Use the explicit type to avoid deep type instantiation
-      const { data, error } = await signUp(email, password) as SignUpResponse;
+      const response = await signUp(email, password) as SignUpResponse;
       
-      if (error) throw error;
+      if (response.error) throw response.error;
       
       // Process referral if a referral code was provided
-      if (referralCode && data?.user) {
+      if (referralCode && response.data?.user) {
+        console.log(`Processing referral code ${referralCode} for new user ${response.data.user.id}`);
+        
         try {
           const { data: referrerData, error: referrerError } = await supabase
             .from('profiles')
@@ -130,19 +133,35 @@ const SignUpForm = ({
           if (referrerError) {
             console.error("Referrer lookup error:", referrerError);
           } else if (referrerData) {
-            // Add referral record
-            await supabase
+            console.log("Found referrer:", referrerData.id);
+            
+            // Add referral record first
+            const { data: referralData, error: referralError } = await supabase
               .from('referrals')
               .insert({
                 referrer_id: referrerData.id,
-                referred_id: data.user.id
-              });
+                referred_id: response.data.user.id,
+                points_awarded: false
+              })
+              .select();
+              
+            if (referralError) {
+              console.error("Referral creation error:", referralError);
+            } else {
+              console.log("Referral record created:", referralData);
+            }
             
             // Update user profile with referrer
-            await supabase
+            const { error: profileError } = await supabase
               .from('profiles')
               .update({ referred_by: referrerData.id })
-              .eq('id', data.user.id);
+              .eq('id', response.data.user.id);
+              
+            if (profileError) {
+              console.error("Profile update error:", profileError);
+            } else {
+              console.log("Profile updated with referrer ID");
+            }
           }
         } catch (err) {
           console.error("Referral processing error:", err);
@@ -150,14 +169,14 @@ const SignUpForm = ({
       }
       
       // Update wallet info if provided
-      if (data?.user && prefilledWalletAddress) {
+      if (response.data?.user && prefilledWalletAddress) {
         await supabase
           .from('profiles')
           .update({ 
             wallet_address: prefilledWalletAddress,
             wallet_verified: walletVerified 
           })
-          .eq('id', data.user.id);
+          .eq('id', response.data.user.id);
       }
       
       toast.success("Check your email for the confirmation link!");

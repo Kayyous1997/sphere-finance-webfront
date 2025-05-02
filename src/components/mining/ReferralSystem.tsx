@@ -24,6 +24,7 @@ const ReferralSystem = ({
   const [localReferralCount, setLocalReferralCount] = useState(referralCount);
   const [localTotalBonus, setLocalTotalBonus] = useState(totalBonus);
   const [subscribed, setSubscribed] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
   // Subscribe to real-time referral updates
   useEffect(() => {
@@ -35,21 +36,27 @@ const ReferralSystem = ({
     setLocalReferralCount(referralCount);
     setLocalTotalBonus(totalBonus);
     
-    // Subscribe to referral updates
+    // Subscribe to referral updates with enhanced logging
     const subscription = miningService.subscribeToReferralUpdates(userId, (data) => {
-      console.log("Received referral update:", data);
-      setLocalReferralCount(data.count);
+      console.log(`Received referral update at ${new Date().toISOString()}:`, data);
       
-      // Recalculate bonus based on new count
-      const baseBonus = data.count * 5;
-      let milestoneBonus = 0;
+      if (data.count !== localReferralCount) {
+        console.log(`Referral count changed from ${localReferralCount} to ${data.count}`);
+        setLocalReferralCount(data.count);
+        setLastUpdateTime(new Date());
+        
+        // Recalculate bonus based on new count
+        const baseBonus = data.count * 5;
+        let milestoneBonus = 0;
+        
+        if (data.count >= 50) milestoneBonus = 100;
+        else if (data.count >= 25) milestoneBonus = 50;
+        else if (data.count >= 10) milestoneBonus = 25;
+        else if (data.count >= 5) milestoneBonus = 10;
+        
+        setLocalTotalBonus(baseBonus + milestoneBonus);
+      }
       
-      if (data.count >= 50) milestoneBonus = 100;
-      else if (data.count >= 25) milestoneBonus = 50;
-      else if (data.count >= 10) milestoneBonus = 25;
-      else if (data.count >= 5) milestoneBonus = 10;
-      
-      setLocalTotalBonus(baseBonus + milestoneBonus);
       setSubscribed(true);
     });
     
@@ -59,7 +66,7 @@ const ReferralSystem = ({
       subscription.unsubscribe();
       setSubscribed(false);
     };
-  }, [userId, referralCount, totalBonus]);
+  }, [userId, referralCount, totalBonus, localReferralCount]);
 
   // Calculate milestone progress
   const getNextMilestone = () => {
@@ -97,6 +104,7 @@ const ReferralSystem = ({
           <h2 className="text-xl font-bold flex items-center">
             <Users className="mr-2 text-sphere-green" /> Referral System
             {subscribed && <span className="ml-2 text-xs text-green-500">(Live)</span>}
+            {lastUpdateTime && <span className="ml-2 text-xs text-blue-400">(Updated: {lastUpdateTime.toLocaleTimeString()})</span>}
           </h2>
           <div className="bg-sphere-card-dark px-3 py-1.5 rounded text-sm">
             <span className="text-gray-400 mr-1">Current bonus:</span>
