@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -114,7 +115,7 @@ const SignUpForm = ({
       setLoading(true);
       
       // Use the explicit type to avoid deep type instantiation
-      const response = await signUp(email, password) as SignUpResponse;
+      const response: SignUpResponse = await signUp(email, password);
       
       if (response.error) throw response.error;
       
