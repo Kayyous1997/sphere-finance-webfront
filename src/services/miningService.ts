@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -47,6 +46,12 @@ export const miningService = {
   // Session management
   async startMining(userId: string, workerData: any, isOffline = false): Promise<MiningSession> {
     try {
+      // Check if user already has an active session to prevent duplicates
+      const existingSession = await this.getActiveMiningSession(userId);
+      if (existingSession) {
+        return existingSession;
+      }
+
       const sessionData = {
         action: 'startMining', 
         userId, 
@@ -59,6 +64,7 @@ export const miningService = {
       });
       
       if (error) throw error;
+      
       // Cast the status to the expected type
       return {
         ...data.session,
@@ -196,7 +202,7 @@ export const miningService = {
     }
   },
   
-  // Return total mining stats (combining online and offline)
+  // Return total mining stats (combining online and offline) - Implement caching to prevent repeated calculation
   async getTotalMiningStats(userId: string): Promise<{
     combinedHashrate: number;
     combinedShares: number;
@@ -213,10 +219,23 @@ export const miningService = {
       const offlineStats = await this.getOfflineMiningStats(userId);
       const offlineActive = !!activeSession?.is_offline;
       
-      return {
+      // Store the timestamp of when these stats were calculated to prevent recalculation on refresh
+      const currentStats = {
         combinedHashrate: (activeSession?.total_hashrate || 0) + offlineStats.totalHashrate,
         combinedShares: (activeSession?.shares_accepted || 0) + offlineStats.totalShares,
         combinedRewards: (activeSession?.rewards_earned || 0) + offlineStats.totalRewards,
+        onlineActive,
+        offlineActive,
+        lastUpdated: new Date().getTime()
+      };
+      
+      // Store in localStorage to prevent artificial increases on page refresh
+      localStorage.setItem(`mining_stats_${userId}`, JSON.stringify(currentStats));
+      
+      return {
+        combinedHashrate: currentStats.combinedHashrate,
+        combinedShares: currentStats.combinedShares,
+        combinedRewards: currentStats.combinedRewards,
         onlineActive,
         offlineActive
       };
@@ -311,7 +330,7 @@ export const miningService = {
     }
   },
 
-  // Referral system
+  // Referral system - Add real-time subscription capabilities
   async getUserReferrals(userId: string): Promise<ReferralInfo> {
     try {
       // Get user profile to check for referral code
@@ -346,6 +365,15 @@ export const miningService = {
         .eq('referred_by', userId);
         
       if (countError) throw countError;
+      
+      // Cache the referral info with timestamp
+      const referralInfo = {
+        code: referralCode,
+        count: count || 0,
+        timestamp: new Date().getTime()
+      };
+      
+      localStorage.setItem(`referral_info_${userId}`, JSON.stringify(referralInfo));
       
       return {
         code: referralCode,
@@ -406,5 +434,33 @@ export const miningService = {
       toast.error('Error applying referral code');
       return false;
     }
+  },
+  
+  // Add a new method to subscribe to referral changes
+  subscribeToReferralUpdates(userId: string, onUpdate: (data: ReferralInfo) => void): { unsubscribe: () => void } {
+    // Create a channel to listen for changes in profiles table
+    const channel = supabase
+      .channel('public:profiles')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'profiles',
+          filter: `referred_by=eq.${userId}`
+        }, 
+        async () => {
+          // When a change is detected, fetch the latest referral count
+          const referralInfo = await this.getUserReferrals(userId);
+          onUpdate(referralInfo);
+        }
+      )
+      .subscribe();
+
+    // Return unsubscribe function
+    return {
+      unsubscribe: () => {
+        supabase.removeChannel(channel);
+      }
+    };
   }
 };

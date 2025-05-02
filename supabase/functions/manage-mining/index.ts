@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.0";
 
@@ -5,6 +6,50 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Rate limiting setup
+const rateLimits = new Map();
+
+// Check if a user has hit rate limits
+function checkRateLimit(userId: string, action: string): boolean {
+  const key = `${userId}:${action}`;
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute window
+  
+  if (!rateLimits.has(key)) {
+    rateLimits.set(key, {
+      count: 1,
+      firstRequest: now
+    });
+    return false;
+  }
+  
+  const userRateLimit = rateLimits.get(key);
+  
+  // If the window has expired, reset the counter
+  if (now - userRateLimit.firstRequest > windowMs) {
+    rateLimits.set(key, {
+      count: 1,
+      firstRequest: now
+    });
+    return false;
+  }
+  
+  // Check limits based on action
+  const limits = {
+    startMining: 3,      // 3 starts per minute
+    stopMining: 5,       // 5 stops per minute
+    updateStats: 20      // 20 updates per minute
+  };
+  
+  const limit = limits[action as keyof typeof limits] || 5;
+  
+  // Increment count and check if over limit
+  userRateLimit.count += 1;
+  rateLimits.set(key, userRateLimit);
+  
+  return userRateLimit.count > limit;
+}
 
 serve(async (req) => {
   // Handle CORS
@@ -23,6 +68,17 @@ serve(async (req) => {
 
     if (!userId) {
       throw new Error("User ID is required");
+    }
+    
+    // Check for rate limiting
+    if (checkRateLimit(userId, action)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429,
+        }
+      );
     }
 
     // Handle different mining actions
@@ -53,8 +109,8 @@ serve(async (req) => {
           );
         }
 
-        // Calculate initial mining stats
-        const initialHashrate = workerData?.hashrate || Math.floor(Math.random() * 30) + 10;
+        // Calculate initial mining stats with reasonable randomness
+        const initialHashrate = workerData?.hashrate || (Math.floor(Math.random() * 10) + 10); // 10-20 range
         const isOfflineMining = isOffline === true;
 
         // Create a new mining session
@@ -69,7 +125,8 @@ serve(async (req) => {
             rewards_earned: 0,
             worker_details: {
               ...workerData,
-              is_offline: isOfflineMining
+              is_offline: isOfflineMining,
+              session_start: new Date().toISOString()
             }
           })
           .select()
@@ -89,10 +146,10 @@ serve(async (req) => {
           const hasReferral = !!profile?.referred_by;
           const bonusMultiplier = hasReferral ? 1.1 : 1; // 10% bonus for referred users
 
-          // Schedule regular updates for offline mining
+          // Use more stable, controlled values for offline mining
           const offlineHashrate = initialHashrate * bonusMultiplier;
-          const estimatedShares = Math.floor(offlineHashrate * 0.1); // Simplified calculation
-          const estimatedRewards = estimatedShares * 0.01; // Simplified calculation
+          const estimatedShares = Math.floor(offlineHashrate * 0.05); // Reduced calculation
+          const estimatedRewards = estimatedShares * 0.005; // Reduced calculation
 
           // Update profile with offline mining stats
           await supabase

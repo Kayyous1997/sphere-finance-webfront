@@ -1,10 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Users, Copy, Award, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { miningService } from "@/services/miningService";
 
 interface ReferralSystemProps {
   userId: string;
@@ -20,20 +21,52 @@ const ReferralSystem = ({
   totalBonus = 0 
 }: ReferralSystemProps) => {
   const [showShare, setShowShare] = useState(false);
+  const [localReferralCount, setLocalReferralCount] = useState(referralCount);
+  const [localTotalBonus, setLocalTotalBonus] = useState(totalBonus);
+
+  // Subscribe to real-time referral updates
+  useEffect(() => {
+    if (!userId) return;
+
+    // Initialize with passed props
+    setLocalReferralCount(referralCount);
+    setLocalTotalBonus(totalBonus);
+    
+    // Subscribe to referral updates
+    const subscription = miningService.subscribeToReferralUpdates(userId, (data) => {
+      setLocalReferralCount(data.count);
+      
+      // Recalculate bonus based on new count
+      const baseBonus = data.count * 5;
+      let milestoneBonus = 0;
+      
+      if (data.count >= 50) milestoneBonus = 100;
+      else if (data.count >= 25) milestoneBonus = 50;
+      else if (data.count >= 10) milestoneBonus = 25;
+      else if (data.count >= 5) milestoneBonus = 10;
+      
+      setLocalTotalBonus(baseBonus + milestoneBonus);
+    });
+    
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [userId, referralCount, totalBonus]);
 
   // Calculate milestone progress
   const getNextMilestone = () => {
-    if (referralCount < 5) return { target: 5, bonus: 10 };
-    if (referralCount < 10) return { target: 10, bonus: 25 };
-    if (referralCount < 25) return { target: 25, bonus: 50 };
-    if (referralCount < 50) return { target: 50, bonus: 100 };
+    if (localReferralCount < 5) return { target: 5, bonus: 10 };
+    if (localReferralCount < 10) return { target: 10, bonus: 25 };
+    if (localReferralCount < 25) return { target: 25, bonus: 50 };
+    if (localReferralCount < 50) return { target: 50, bonus: 100 };
     return { target: 50, bonus: 100 }; // Already at max
   };
 
   const nextMilestone = getNextMilestone();
-  const milestoneProgress = referralCount >= 50 
+  const milestoneProgress = localReferralCount >= 50 
     ? 100 
-    : Math.floor((referralCount / nextMilestone.target) * 100);
+    : Math.floor((localReferralCount / nextMilestone.target) * 100);
 
   // Generate referral code if none exists
   const generatedCode = referralCode || `SPH${userId.substring(0, 8)}`;
@@ -59,7 +92,7 @@ const ReferralSystem = ({
           </h2>
           <div className="bg-sphere-card-dark px-3 py-1.5 rounded text-sm">
             <span className="text-gray-400 mr-1">Current bonus:</span>
-            <span className="text-sphere-green font-medium">+{totalBonus}%</span>
+            <span className="text-sphere-green font-medium">+{localTotalBonus}%</span>
           </div>
         </div>
 
@@ -111,21 +144,21 @@ const ReferralSystem = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-sphere-card-dark p-3 rounded-md">
               <div className="text-gray-400 text-sm mb-1">Total Referrals</div>
-              <div className="text-xl font-medium">{referralCount}</div>
+              <div className="text-xl font-medium">{localReferralCount}</div>
             </div>
             <div className="bg-sphere-card-dark p-3 rounded-md">
               <div className="text-gray-400 text-sm mb-1">Base Bonus</div>
-              <div className="text-xl font-medium">+{referralCount * 5}%</div>
+              <div className="text-xl font-medium">+{localReferralCount * 5}%</div>
             </div>
           </div>
 
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Milestone Bonuses</h3>
             <div className="grid grid-cols-4 gap-2">
-              <MilestoneCard count={5} bonus={10} achieved={referralCount >= 5} />
-              <MilestoneCard count={10} bonus={25} achieved={referralCount >= 10} />
-              <MilestoneCard count={25} bonus={50} achieved={referralCount >= 25} />
-              <MilestoneCard count={50} bonus={100} achieved={referralCount >= 50} />
+              <MilestoneCard count={5} bonus={10} achieved={localReferralCount >= 5} />
+              <MilestoneCard count={10} bonus={25} achieved={localReferralCount >= 10} />
+              <MilestoneCard count={25} bonus={50} achieved={localReferralCount >= 25} />
+              <MilestoneCard count={50} bonus={100} achieved={localReferralCount >= 50} />
             </div>
           </div>
         </div>

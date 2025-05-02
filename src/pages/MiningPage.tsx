@@ -1,9 +1,8 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ArrowUpDown } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import HashrateChart from "@/components/mining/HashrateChart";
 import SharesChart from "@/components/mining/SharesChart";
 import ReferralSystem from "@/components/mining/ReferralSystem";
@@ -30,6 +29,13 @@ const MiningPage = () => {
     referralCount: 0,
     totalBonus: 0
   });
+  
+  // Use a ref to track if this is the initial load
+  const isInitialLoad = useRef(true);
+  // Use a ref to store the last update timestamp to prevent rapid updates
+  const lastUpdateTime = useRef(0);
+  // Track the update interval
+  const updateIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -43,34 +49,105 @@ const MiningPage = () => {
     const loadSessionAndReferrals = async () => {
       try {
         setPageLoading(true);
+        
+        // Load active session
         const session = await miningService.getActiveMiningSession(user.id);
         if (session) {
           setCurrentSession(session);
           setIsActive(true);
           setProgress(100);
-          setMiningStats({
-            hashrate: session.total_hashrate,
-            sharesAccepted: session.shares_accepted,
-            sharesRejected: session.shares_rejected,
-            rewards: session.rewards_earned
-          });
+          
+          // Check for cached mining stats to prevent values from increasing on refresh
+          const cachedStatsJson = localStorage.getItem(`mining_stats_${user.id}`);
+          if (cachedStatsJson) {
+            try {
+              const cachedStats = JSON.parse(cachedStatsJson);
+              // Only use cached stats if they're from the same session
+              if (cachedStats && session.id === cachedStats.sessionId) {
+                setMiningStats({
+                  hashrate: cachedStats.hashrate || session.total_hashrate,
+                  sharesAccepted: cachedStats.sharesAccepted || session.shares_accepted,
+                  sharesRejected: cachedStats.sharesRejected || session.shares_rejected,
+                  rewards: cachedStats.rewards || session.rewards_earned
+                });
+              } else {
+                // Use session data if cache doesn't match session
+                setMiningStats({
+                  hashrate: session.total_hashrate,
+                  sharesAccepted: session.shares_accepted,
+                  sharesRejected: session.shares_rejected,
+                  rewards: session.rewards_earned
+                });
+              }
+            } catch (e) {
+              // Fallback to session data if cache parsing fails
+              setMiningStats({
+                hashrate: session.total_hashrate,
+                sharesAccepted: session.shares_accepted,
+                sharesRejected: session.shares_rejected,
+                rewards: session.rewards_earned
+              });
+            }
+          } else {
+            // No cache, use session data
+            setMiningStats({
+              hashrate: session.total_hashrate,
+              sharesAccepted: session.shares_accepted,
+              sharesRejected: session.shares_rejected,
+              rewards: session.rewards_earned
+            });
+          }
         }
 
+        // Load referrals with caching
         try {
-          const referrals = await miningService.getUserReferrals(user.id);
-          const baseBonus = referrals.count * 5;
+          // Check for cached referral info
+          const cachedReferralJson = localStorage.getItem(`referral_info_${user.id}`);
+          let shouldFetchReferrals = true;
           
-          let milestoneBonus = 0;
-          if (referrals.count >= 50) milestoneBonus = 100;
-          else if (referrals.count >= 25) milestoneBonus = 50;
-          else if (referrals.count >= 10) milestoneBonus = 25;
-          else if (referrals.count >= 5) milestoneBonus = 10;
+          if (cachedReferralJson) {
+            try {
+              const cachedReferral = JSON.parse(cachedReferralJson);
+              if (cachedReferral && 
+                  Date.now() - cachedReferral.timestamp < 60000) { // Cache valid for 1 minute
+                // Use cached referral data
+                const baseBonus = cachedReferral.count * 5;
+                let milestoneBonus = 0;
+                if (cachedReferral.count >= 50) milestoneBonus = 100;
+                else if (cachedReferral.count >= 25) milestoneBonus = 50;
+                else if (cachedReferral.count >= 10) milestoneBonus = 25;
+                else if (cachedReferral.count >= 5) milestoneBonus = 10;
+                
+                setReferralInfo({
+                  referralCode: cachedReferral.code || "",
+                  referralCount: cachedReferral.count,
+                  totalBonus: baseBonus + milestoneBonus
+                });
+                
+                shouldFetchReferrals = false;
+              }
+            } catch (e) {
+              console.error("Error parsing cached referrals:", e);
+            }
+          }
           
-          setReferralInfo({
-            referralCode: referrals.code || "",
-            referralCount: referrals.count,
-            totalBonus: baseBonus + milestoneBonus
-          });
+          if (shouldFetchReferrals) {
+            // Fetch fresh referral data
+            const referrals = await miningService.getUserReferrals(user.id);
+            const baseBonus = referrals.count * 5;
+            
+            let milestoneBonus = 0;
+            if (referrals.count >= 50) milestoneBonus = 100;
+            else if (referrals.count >= 25) milestoneBonus = 50;
+            else if (referrals.count >= 10) milestoneBonus = 25;
+            else if (referrals.count >= 5) milestoneBonus = 10;
+            
+            setReferralInfo({
+              referralCode: referrals.code || "",
+              referralCount: referrals.count,
+              totalBonus: baseBonus + milestoneBonus
+            });
+          }
         } catch (error) {
           console.error("Error loading referral data:", error);
           setReferralInfo({
@@ -81,33 +158,75 @@ const MiningPage = () => {
         }
         
         setPageLoading(false);
+        isInitialLoad.current = false;
       } catch (error) {
         console.error("Error loading session data:", error);
         setPageLoading(false);
+        isInitialLoad.current = false;
       }
     };
 
     loadSessionAndReferrals();
   }, [user, navigate, loading]);
 
+  // Set up mining simulation with rate limiting
   useEffect(() => {
     if (!isActive || !currentSession || !user) return;
 
-    let interval = setInterval(async () => {
-      const hashrate = miningStats.hashrate + (Math.random() * 0.1 - 0.05);
-      const sharesAccepted = miningStats.sharesAccepted + (Math.random() > 0.8 ? 1 : 0);
-      const sharesRejected = miningStats.sharesRejected + (Math.random() > 0.95 ? 1 : 0);
-      const rewards = miningStats.rewards + (Math.random() * 0.0001);
+    // Clear any existing intervals to prevent duplicates
+    if (updateIntervalRef.current) {
+      clearInterval(updateIntervalRef.current);
+    }
 
-      const newStats = {
-        hashrate: Number(hashrate.toFixed(2)),
-        sharesAccepted: Math.floor(sharesAccepted),
-        sharesRejected: Math.floor(sharesRejected),
-        rewards: Number(rewards.toFixed(4))
-      };
+    // Create an update interval with controlled rate of change
+    const interval = window.setInterval(async () => {
+      const now = Date.now();
+      // Limit updates to once every second
+      if (now - lastUpdateTime.current < 1000) {
+        return;
+      }
+      
+      lastUpdateTime.current = now;
+      
+      // Create a copy of current stats
+      const newStats = { ...miningStats };
+      
+      // Apply controlled, smaller increments
+      newStats.hashrate += (Math.random() * 0.05 - 0.025); // Smaller fluctuation
+      if (newStats.hashrate < 0) newStats.hashrate = 0;
+      
+      // Only occasionally increment shares (20% chance)
+      if (Math.random() > 0.8) {
+        newStats.sharesAccepted += 1;
+      }
+      
+      // Very rarely increment rejected shares (5% chance)
+      if (Math.random() > 0.95) {
+        newStats.sharesRejected += 1;
+      }
+      
+      // Small reward increments
+      newStats.rewards += (Math.random() * 0.00005); // Much smaller increment
+      
+      // Update the state
+      setMiningStats({
+        hashrate: Number(newStats.hashrate.toFixed(2)),
+        sharesAccepted: Math.floor(newStats.sharesAccepted),
+        sharesRejected: Math.floor(newStats.sharesRejected),
+        rewards: Number(newStats.rewards.toFixed(4))
+      });
+      
+      // Store stats in localStorage to prevent increase on refresh
+      localStorage.setItem(`mining_stats_${user.id}`, JSON.stringify({
+        sessionId: currentSession.id,
+        hashrate: Number(newStats.hashrate.toFixed(2)),
+        sharesAccepted: Math.floor(newStats.sharesAccepted),
+        sharesRejected: Math.floor(newStats.sharesRejected),
+        rewards: Number(newStats.rewards.toFixed(4)),
+        timestamp: Date.now()
+      }));
 
-      setMiningStats(newStats);
-
+      // Only sync with server occasionally (10% chance) to avoid too many requests
       if (Math.random() > 0.9) {
         try {
           await miningService.updateMiningStats(user.id, currentSession.id, {
@@ -121,8 +240,15 @@ const MiningPage = () => {
         }
       }
     }, 1000);
+    
+    updateIntervalRef.current = interval;
 
-    return () => clearInterval(interval);
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+    };
   }, [isActive, currentSession, miningStats, user]);
 
   const toggleMining = async () => {
