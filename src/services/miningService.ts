@@ -333,6 +333,8 @@ export const miningService = {
   // Referral system - Add real-time subscription capabilities
   async getUserReferrals(userId: string): Promise<ReferralInfo> {
     try {
+      console.log("Getting referral info for user:", userId);
+      
       // Get user profile to check for referral code
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -340,13 +342,17 @@ export const miningService = {
         .eq('id', userId)
         .single();
         
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        throw profileError;
+      }
       
       let referralCode = profile?.referral_code || '';
       
       // If no referral code exists, generate one and save it
       if (!referralCode) {
         referralCode = `SPH${userId.substring(0, 8)}`;
+        console.log("Generated new referral code:", referralCode);
         
         const { error: updateError } = await supabase
           .from('profiles')
@@ -359,12 +365,18 @@ export const miningService = {
       }
       
       // Count how many users have used this referral code
+      console.log("Counting referrals for user:", userId);
       const { count, error: countError } = await supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .eq('referred_by', userId);
         
-      if (countError) throw countError;
+      if (countError) {
+        console.error("Error counting referrals:", countError);
+        throw countError;
+      }
+      
+      console.log(`Found ${count} referrals for user ${userId}`);
       
       // Cache the referral info with timestamp
       const referralInfo = {
@@ -387,6 +399,8 @@ export const miningService = {
   
   async applyReferralCode(userId: string, referralCode: string): Promise<boolean> {
     try {
+      console.log(`Applying referral code: ${referralCode} for user: ${userId}`);
+      
       // Find the user who owns this referral code
       const { data: referrer, error: referrerError } = await supabase
         .from('profiles')
@@ -395,12 +409,14 @@ export const miningService = {
         .single();
         
       if (referrerError || !referrer) {
+        console.error("Invalid referral code:", referrerError);
         toast.error('Invalid referral code');
         return false;
       }
       
       // Make sure user isn't referring themselves
       if (referrer.id === userId) {
+        console.error("User tried to refer themselves");
         toast.error('You cannot refer yourself');
         return false;
       }
@@ -412,9 +428,13 @@ export const miningService = {
         .eq('id', userId)
         .single();
         
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Error checking profile:", profileError);
+        throw profileError;
+      }
       
       if (profile.referred_by) {
+        console.error("User already has a referrer");
         toast.error('You have already used a referral code');
         return false;
       }
@@ -425,9 +445,26 @@ export const miningService = {
         .update({ referred_by: referrer.id })
         .eq('id', userId);
         
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error applying referral:", updateError);
+        throw updateError;
+      }
+      
+      // Also create a record in the referrals table
+      const { error: referralError } = await supabase
+        .from('referrals')
+        .insert({
+          referrer_id: referrer.id,
+          referred_id: userId,
+          points_awarded: false
+        });
+      
+      if (referralError) {
+        console.error("Error creating referral record:", referralError);
+      }
       
       toast.success('Referral code applied successfully');
+      console.log(`Referral successfully applied: ${userId} was referred by ${referrer.id}`);
       return true;
     } catch (error) {
       console.error('Error applying referral code:', error);
@@ -436,11 +473,39 @@ export const miningService = {
     }
   },
   
-  // Add a new method to subscribe to referral changes
+  // Enhanced method to subscribe to referral changes
   subscribeToReferralUpdates(userId: string, onUpdate: (data: ReferralInfo) => void): { unsubscribe: () => void } {
-    // Create a channel to listen for changes in profiles table
-    const channel = supabase
-      .channel('public:profiles')
+    console.log(`Setting up referral subscription for user: ${userId}`);
+    
+    // First, make a manual check immediately and set up the channel
+    this.getUserReferrals(userId).then(referralInfo => {
+      console.log("Initial referral data:", referralInfo);
+      onUpdate(referralInfo);
+    });
+    
+    // Create a channel for the referrals table itself
+    const referralsChannel = supabase
+      .channel(`public:referrals:referrer_id=eq.${userId}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'referrals',
+          filter: `referrer_id=eq.${userId}`
+        }, 
+        async (payload) => {
+          console.log("Referrals table changed:", payload);
+          const referralInfo = await this.getUserReferrals(userId);
+          onUpdate(referralInfo);
+        }
+      )
+      .subscribe((status) => {
+        console.log(`Referrals channel status: ${status}`);
+      });
+      
+    // Create a channel for the profiles table to detect when users are referred
+    const profilesChannel = supabase
+      .channel(`public:profiles:referred_by=eq.${userId}`)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -448,18 +513,22 @@ export const miningService = {
           table: 'profiles',
           filter: `referred_by=eq.${userId}`
         }, 
-        async () => {
-          // When a change is detected, fetch the latest referral count
+        async (payload) => {
+          console.log("Profiles table changed:", payload);
           const referralInfo = await this.getUserReferrals(userId);
           onUpdate(referralInfo);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Profiles channel status: ${status}`);
+      });
 
-    // Return unsubscribe function
+    // Return unsubscribe function that cleans up both channels
     return {
       unsubscribe: () => {
-        supabase.removeChannel(channel);
+        console.log(`Unsubscribing referral channels for user: ${userId}`);
+        supabase.removeChannel(referralsChannel);
+        supabase.removeChannel(profilesChannel);
       }
     };
   }

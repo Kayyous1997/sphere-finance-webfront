@@ -23,17 +23,21 @@ const ReferralSystem = ({
   const [showShare, setShowShare] = useState(false);
   const [localReferralCount, setLocalReferralCount] = useState(referralCount);
   const [localTotalBonus, setLocalTotalBonus] = useState(totalBonus);
+  const [subscribed, setSubscribed] = useState(false);
 
   // Subscribe to real-time referral updates
   useEffect(() => {
     if (!userId) return;
 
+    console.log("Setting up referral subscription for user:", userId);
+    
     // Initialize with passed props
     setLocalReferralCount(referralCount);
     setLocalTotalBonus(totalBonus);
     
     // Subscribe to referral updates
     const subscription = miningService.subscribeToReferralUpdates(userId, (data) => {
+      console.log("Received referral update:", data);
       setLocalReferralCount(data.count);
       
       // Recalculate bonus based on new count
@@ -46,11 +50,14 @@ const ReferralSystem = ({
       else if (data.count >= 5) milestoneBonus = 10;
       
       setLocalTotalBonus(baseBonus + milestoneBonus);
+      setSubscribed(true);
     });
     
     // Cleanup subscription on unmount
     return () => {
+      console.log("Cleaning up referral subscription for user:", userId);
       subscription.unsubscribe();
+      setSubscribed(false);
     };
   }, [userId, referralCount, totalBonus]);
 
@@ -89,6 +96,7 @@ const ReferralSystem = ({
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold flex items-center">
             <Users className="mr-2 text-sphere-green" /> Referral System
+            {subscribed && <span className="ml-2 text-xs text-green-500">(Live)</span>}
           </h2>
           <div className="bg-sphere-card-dark px-3 py-1.5 rounded text-sm">
             <span className="text-gray-400 mr-1">Current bonus:</span>

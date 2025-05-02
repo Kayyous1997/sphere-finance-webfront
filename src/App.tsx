@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,11 +33,16 @@ const ReferralHandler = () => {
       const referralCode = searchParams.get('ref');
       
       if (referralCode && user) {
-        // Apply referral code and remove from URL
-        await miningService.applyReferralCode(user.id, referralCode);
+        console.log(`Detected referral code in URL: ${referralCode} for user: ${user.id}`);
         
-        // Clear the referral code from URL
-        navigate(location.pathname, { replace: true });
+        // Apply referral code and remove from URL
+        const applied = await miningService.applyReferralCode(user.id, referralCode);
+        
+        if (applied) {
+          console.log("Referral successfully applied, clearing URL params");
+          // Clear the referral code from URL
+          navigate(location.pathname, { replace: true });
+        }
       }
     };
     
