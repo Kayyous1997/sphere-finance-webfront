@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,16 @@ interface SignUpFormProps {
   prefilledEmail?: string;
   prefilledWalletAddress?: string;
   walletVerified?: boolean;
+}
+
+// Define explicit type for signUp response to prevent excessive type instantiation
+interface SignUpResponse {
+  data: { 
+    user: { 
+      id: string 
+    } | null 
+  } | null;
+  error: Error | null;
 }
 
 const SignUpForm = ({ 
@@ -103,16 +112,7 @@ const SignUpForm = ({
     try {
       setLoading(true);
       
-      // Explicitly define the shape of the response to avoid deep type instantiation
-      interface SignUpResponse {
-        data: { 
-          user: { 
-            id: string 
-          } | null 
-        } | null;
-        error: Error | null;
-      }
-      
+      // Use the explicit type to avoid deep type instantiation
       const { data, error } = await signUp(email, password) as SignUpResponse;
       
       if (error) throw error;
