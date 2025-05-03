@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -205,8 +206,8 @@ const MiningPage = () => {
         newStats.sharesRejected += 1;
       }
       
-      // Small reward increments
-      newStats.rewards += (Math.random() * 0.00005); // Much smaller increment
+      // Increased reward increments - now 0.005 per update (100x increase)
+      newStats.rewards += 0.005; // Fixed increment of 0.005 instead of random small value
       
       // Update the state
       setMiningStats({
