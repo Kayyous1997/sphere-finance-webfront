@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
@@ -54,12 +55,13 @@ const Navbar = () => {
   return (
     <nav className="flex items-center justify-between p-4 bg-sphere-dark border-b border-gray-800">
       <div className="flex items-center">
-        <Link to="/" className="mr-8">
+        <Link to="/" className="mr-8 flex items-center">
           <img 
-            src="/lovable-uploads/4543ce24-37c0-4f88-ae42-12be997f85d0.png" 
+            src="/lovable-uploads/aa563b89-8618-49a8-a8c3-dcae7511f94e.png" 
             alt="Sphere Finance Logo" 
             className="h-8 w-auto"
           />
+          <span className="ml-2 font-bold text-xl text-white">Sphere Finance</span>
         </Link>
         <div className="hidden md:flex items-center space-x-1">
           <NavItem href="/docs">Docs</NavItem>
@@ -117,12 +119,13 @@ const Navbar = () => {
           <SheetContent side="right" className="bg-sphere-dark border-gray-800 p-0">
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center p-4 border-b border-gray-800">
-                <Link to="/" onClick={closeMobileMenu}>
+                <Link to="/" onClick={closeMobileMenu} className="flex items-center">
                   <img 
-                    src="/lovable-uploads/4543ce24-37c0-4f88-ae42-12be997f85d0.png" 
+                    src="/lovable-uploads/aa563b89-8618-49a8-a8c3-dcae7511f94e.png" 
                     alt="Sphere Finance Logo" 
                     className="h-8 w-auto"
                   />
+                  <span className="ml-2 font-bold text-xl text-white">Sphere Finance</span>
                 </Link>
                 <SheetClose asChild>
                   <Button variant="ghost" size="icon">
