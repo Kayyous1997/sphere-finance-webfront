@@ -37,6 +37,7 @@ const SignUpForm = ({
   const location = useLocation();
   const navigate = useNavigate();
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [manualReferralCode, setManualReferralCode] = useState("");
   const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -57,6 +58,7 @@ const SignUpForm = ({
     if (ref) {
       console.log("Found referral code in URL:", ref);
       setReferralCode(ref);
+      setManualReferralCode(ref);
       // Don't navigate away - just store the ref code
     }
   }, [prefilledEmail, location]);
@@ -69,6 +71,9 @@ const SignUpForm = ({
   
   const isPasswordValid = hasUpper && hasLower && hasNumber && hasSpecial && isLongEnough;
   const doPasswordsMatch = password === confirmPassword;
+
+  // Determine which referral code to use (from URL or manually entered)
+  const effectiveReferralCode = referralCode || (manualReferralCode.trim() !== "" ? manualReferralCode : null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,19 +120,19 @@ const SignUpForm = ({
       setLoading(true);
       
       // Use the explicit type to avoid deep type instantiation
-      const response: SignUpResponse = await signUp(email, password);
+      const response = await signUp(email, password) as SignUpResponse;
       
       if (response.error) throw response.error;
       
       // Process referral if a referral code was provided
-      if (referralCode && response.data?.user) {
-        console.log(`Processing referral code ${referralCode} for new user ${response.data.user.id}`);
+      if (effectiveReferralCode && response.data?.user) {
+        console.log(`Processing referral code ${effectiveReferralCode} for new user ${response.data.user.id}`);
         
         try {
           const { data: referrerData, error: referrerError } = await supabase
             .from('profiles')
             .select('id')
-            .eq('referral_code', referralCode)
+            .eq('referral_code', effectiveReferralCode)
             .single();
           
           if (referrerError) {
@@ -278,6 +283,22 @@ const SignUpForm = ({
         </div>
         {confirmPassword && !doPasswordsMatch && (
           <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
+        )}
+      </div>
+      
+      {/* Add referral code input */}
+      <div>
+        <Label htmlFor="referralCode">Referral Code (Optional)</Label>
+        <Input
+          id="referralCode"
+          type="text"
+          placeholder="Enter referral code"
+          value={manualReferralCode}
+          onChange={(e) => setManualReferralCode(e.target.value)}
+          className="bg-sphere-card-dark border-gray-800"
+        />
+        {referralCode && (
+          <p className="text-green-500 text-xs mt-1">Referral code from URL applied: {referralCode}</p>
         )}
       </div>
       
