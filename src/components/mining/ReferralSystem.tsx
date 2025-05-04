@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,7 @@ const ReferralSystem = ({
   const [subscribed, setSubscribed] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
-  // Subscribe to real-time referral updates
+  // Subscribe to real-time referral updates with improved logging
   useEffect(() => {
     if (!userId) return;
 
@@ -35,6 +34,30 @@ const ReferralSystem = ({
     // Initialize with passed props
     setLocalReferralCount(referralCount);
     setLocalTotalBonus(totalBonus);
+    
+    // Fetch initial referral data to ensure we have the latest count
+    const fetchInitialData = async () => {
+      try {
+        const data = await miningService.getUserReferrals(userId);
+        console.log("Initial referral data:", data);
+        setLocalReferralCount(data.count);
+        
+        // Calculate bonus based on count
+        const baseBonus = data.count * 5;
+        let milestoneBonus = 0;
+        
+        if (data.count >= 50) milestoneBonus = 100;
+        else if (data.count >= 25) milestoneBonus = 50;
+        else if (data.count >= 10) milestoneBonus = 25;
+        else if (data.count >= 5) milestoneBonus = 10;
+        
+        setLocalTotalBonus(baseBonus + milestoneBonus);
+      } catch (err) {
+        console.error("Error fetching initial referral data:", err);
+      }
+    };
+    
+    fetchInitialData();
     
     // Subscribe to referral updates with enhanced logging
     const subscription = miningService.subscribeToReferralUpdates(userId, (data) => {
@@ -66,7 +89,7 @@ const ReferralSystem = ({
       subscription.unsubscribe();
       setSubscribed(false);
     };
-  }, [userId, referralCount, totalBonus, localReferralCount]);
+  }, [userId, referralCount, totalBonus]);
 
   // Calculate milestone progress
   const getNextMilestone = () => {

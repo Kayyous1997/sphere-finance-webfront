@@ -24,7 +24,7 @@ interface SignUpResponseData {
   } | null;
 }
 
-interface SignUpResponseObject {
+interface SignUpResult {
   data: SignUpResponseData | null;
   error: Error | null;
 }
@@ -122,7 +122,7 @@ const SignUpForm = ({
       setLoading(true);
       
       // Use the explicit type to avoid deep type instantiation
-      const response = await signUp(email, password) as SignUpResponseObject;
+      const response = await signUp(email, password) as SignUpResult;
       
       if (response.error) throw response.error;
       
