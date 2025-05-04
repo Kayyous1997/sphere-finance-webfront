@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -331,7 +332,8 @@ export const miningService = {
   },
 
   // Referral system - Add real-time subscription capabilities
-  async getUserReferrals: async (userId: string) => {
+  // Fixed: removed duplicate async keyword
+  getUserReferrals: async (userId: string) => {
     if (!userId) return { count: 0, totalBonus: 0 };
     
     try {
@@ -351,6 +353,15 @@ export const miningService = {
       const referralCount = referrals ? referrals.length : 0;
       console.log(`Found ${referralCount} referrals for user ${userId}`);
       
+      // Add the referral code
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('referral_code')
+        .eq('id', userId)
+        .single();
+      
+      const referralCode = profile?.referral_code || ``;
+      
       // Calculate bonus based on referral count
       let baseBonus = referralCount * 5;
       let milestoneBonus = 0;
@@ -365,7 +376,8 @@ export const miningService = {
       return { 
         count: referralCount, 
         totalBonus: totalBonus,
-        referrals: referrals 
+        referrals: referrals,
+        code: referralCode 
       };
     } catch (err) {
       console.error("Error in getUserReferrals:", err);
@@ -457,7 +469,7 @@ export const miningService = {
     }
   },
   
-  // Enhanced method to subscribe to referral changes
+  // Enhanced method to subscribe to referral updates
   subscribeToReferralUpdates: (userId: string, callback: (data: any) => void) => {
     console.log(`Setting up referral subscription for user ${userId}`);
     

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -35,6 +34,7 @@ const SignUpForm = ({
   prefilledWalletAddress = "",
   walletVerified = false
 }: SignUpFormProps) => {
+  // Destructure signUp from useAuth but explicitly type it to avoid circular reference
   const { signUp } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,7 +121,7 @@ const SignUpForm = ({
     try {
       setLoading(true);
       
-      // Use the explicit type to avoid deep type instantiation
+      // Explicitly type response to avoid circular reference
       const response = await signUp(email, password) as SignUpResult;
       
       if (response.error) throw response.error;
