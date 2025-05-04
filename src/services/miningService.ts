@@ -331,69 +331,45 @@ export const miningService = {
   },
 
   // Referral system - Add real-time subscription capabilities
-  async getUserReferrals(userId: string): Promise<ReferralInfo> {
+  async getUserReferrals: async (userId: string) => {
+    if (!userId) return { count: 0, totalBonus: 0 };
+    
     try {
-      console.log("Getting referral info for user:", userId);
+      console.log(`Fetching referral data for user ${userId}`);
       
-      // Get user profile to check for referral code
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('referral_code')
-        .eq('id', userId)
-        .single();
-        
-      if (profileError) {
-        console.error("Error fetching profile:", profileError);
-        throw profileError;
-      }
-      
-      let referralCode = profile?.referral_code || '';
-      
-      // If no referral code exists, generate one and save it
-      if (!referralCode) {
-        referralCode = `SPH${userId.substring(0, 8)}`;
-        console.log("Generated new referral code:", referralCode);
-        
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ referral_code: referralCode })
-          .eq('id', userId);
-          
-        if (updateError) {
-          console.error('Error saving referral code:', updateError);
-        }
-      }
-      
-      // Count how many users have used this referral code - FIXED: Use the referrals table for counting
-      console.log("Counting referrals for user:", userId);
-      const { count, error: countError } = await supabase
+      // Count users who were referred by this user
+      const { data: referrals, error } = await supabase
         .from('referrals')
-        .select('id', { count: 'exact', head: true })
+        .select('*')
         .eq('referrer_id', userId);
-        
-      if (countError) {
-        console.error("Error counting referrals:", countError);
-        throw countError;
+      
+      if (error) {
+        console.error("Error fetching referrals:", error);
+        return { count: 0, totalBonus: 0 };
       }
       
-      console.log(`Found ${count} referrals for user ${userId} in referrals table`);
+      const referralCount = referrals ? referrals.length : 0;
+      console.log(`Found ${referralCount} referrals for user ${userId}`);
       
-      // Cache the referral info with timestamp
-      const referralInfo = {
-        code: referralCode,
-        count: count || 0,
-        timestamp: new Date().getTime()
+      // Calculate bonus based on referral count
+      let baseBonus = referralCount * 5;
+      let milestoneBonus = 0;
+      
+      if (referralCount >= 50) milestoneBonus = 100;
+      else if (referralCount >= 25) milestoneBonus = 50;
+      else if (referralCount >= 10) milestoneBonus = 25;
+      else if (referralCount >= 5) milestoneBonus = 10;
+      
+      const totalBonus = baseBonus + milestoneBonus;
+      
+      return { 
+        count: referralCount, 
+        totalBonus: totalBonus,
+        referrals: referrals 
       };
-      
-      localStorage.setItem(`referral_info_${userId}`, JSON.stringify(referralInfo));
-      
-      return {
-        code: referralCode,
-        count: count || 0
-      };
-    } catch (error) {
-      console.error('Error getting user referrals:', error);
-      return { code: '', count: 0 };
+    } catch (err) {
+      console.error("Error in getUserReferrals:", err);
+      return { count: 0, totalBonus: 0 };
     }
   },
   
@@ -482,42 +458,36 @@ export const miningService = {
   },
   
   // Enhanced method to subscribe to referral changes
-  subscribeToReferralUpdates(userId: string, onUpdate: (data: ReferralInfo) => void): { unsubscribe: () => void } {
-    console.log(`Setting up referral subscription for user: ${userId}`);
+  subscribeToReferralUpdates: (userId: string, callback: (data: any) => void) => {
+    console.log(`Setting up referral subscription for user ${userId}`);
     
-    // First, make a manual check immediately and set up the channel
-    this.getUserReferrals(userId).then(referralInfo => {
-      console.log("Initial referral data:", referralInfo);
-      onUpdate(referralInfo);
-    });
-    
-    // Create a channel specifically for the referrals table
-    const channelName = `referrals-${userId}-${Math.random().toString(36).substring(2, 7)}`;
-    console.log(`Creating channel: ${channelName} for referrals`);
-    
-    const referralsChannel = supabase
-      .channel(channelName)
+    // Enable Supabase realtime for the referrals table
+    // This subscription will be triggered whenever a new referral is added
+    const subscription = supabase
+      .channel('referrals_changes')
       .on('postgres_changes', 
-        { 
+        {
           event: '*', 
-          schema: 'public', 
+          schema: 'public',
           table: 'referrals',
           filter: `referrer_id=eq.${userId}`
         }, 
         async (payload) => {
-          console.log("Referrals table changed:", payload);
-          const referralInfo = await this.getUserReferrals(userId);
-          onUpdate(referralInfo);
+          console.log('Referral change detected:', payload);
+          
+          // Get updated referral data
+          const referralData = await miningService.getUserReferrals(userId);
+          
+          // Send updated data to the callback
+          callback(referralData);
         }
       )
-      .subscribe((status) => {
-        console.log(`Referrals channel status: ${status}`);
-      });
-
+      .subscribe();
+    
     return {
       unsubscribe: () => {
-        console.log(`Unsubscribing referral channel for user: ${userId}`);
-        supabase.removeChannel(referralsChannel);
+        console.log(`Cleaning up referral subscription for user ${userId}`);
+        supabase.removeChannel(subscription);
       }
     };
   }
