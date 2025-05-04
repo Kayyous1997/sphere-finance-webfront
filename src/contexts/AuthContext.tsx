@@ -1,16 +1,18 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 // Define explicit return type for signUp function with proper structure
-interface SignUpResponseData {
+// Export these types so they can be imported in SignUpForm.tsx
+export interface SignUpResponseData {
   user: { 
     id: string 
   } | null;
 }
 
-interface SignUpResult {
+export interface SignUpResult {
   data: SignUpResponseData | null;
   error: Error | null;
 }

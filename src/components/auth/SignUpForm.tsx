@@ -16,17 +16,8 @@ interface SignUpFormProps {
   walletVerified?: boolean;
 }
 
-// Define explicit type for signUp response without circular references
-interface SignUpResponseData {
-  user: { 
-    id: string 
-  } | null;
-}
-
-interface SignUpResult {
-  data: SignUpResponseData | null;
-  error: Error | null;
-}
+// Import these types from the AuthContext to prevent duplication
+import { SignUpResponseData, SignUpResult } from "@/contexts/AuthContext";
 
 const SignUpForm = ({ 
   onSuccess,
@@ -34,7 +25,7 @@ const SignUpForm = ({
   prefilledWalletAddress = "",
   walletVerified = false
 }: SignUpFormProps) => {
-  // Destructure signUp from useAuth but explicitly type it to avoid circular reference
+  // Use the imported type for signUp
   const { signUp } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,8 +112,8 @@ const SignUpForm = ({
     try {
       setLoading(true);
       
-      // Explicitly type response to avoid circular reference
-      const response = await signUp(email, password) as SignUpResult;
+      // Breaking the type recursion by using a type assertion
+      const response = await signUp(email, password);
       
       if (response.error) throw response.error;
       
