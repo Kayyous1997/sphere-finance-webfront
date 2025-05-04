@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,13 +61,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string): Promise<SignUpResult> => {
     try {
-      const response = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (response.error) throw response.error;
-      return response as SignUpResult;
+      // Explicitly shape the response to match SignUpResult type
+      const result: SignUpResult = {
+        data: data ? { user: data.user } : null,
+        error: error
+      };
+
+      if (error) throw error;
+      return result;
     } catch (error: any) {
       toast.error(error.message);
       throw error;

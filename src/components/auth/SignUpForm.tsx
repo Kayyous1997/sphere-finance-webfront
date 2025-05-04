@@ -16,8 +16,8 @@ interface SignUpFormProps {
   walletVerified?: boolean;
 }
 
-// Import these types from the AuthContext to prevent duplication
-import { SignUpResponseData, SignUpResult } from "@/contexts/AuthContext";
+// Import the types from AuthContext
+import type { SignUpResult } from "@/contexts/AuthContext";
 
 const SignUpForm = ({ 
   onSuccess,
@@ -25,7 +25,6 @@ const SignUpForm = ({
   prefilledWalletAddress = "",
   walletVerified = false
 }: SignUpFormProps) => {
-  // Use the imported type for signUp
   const { signUp } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -112,8 +111,11 @@ const SignUpForm = ({
     try {
       setLoading(true);
       
-      // Breaking the type recursion by using a type assertion
-      const response = await signUp(email, password);
+      // Use type assertion with a simple type to break recursion
+      const response = await signUp(email, password) as unknown as {
+        data: { user: { id: string } | null } | null;
+        error: Error | null;
+      };
       
       if (response.error) throw response.error;
       
