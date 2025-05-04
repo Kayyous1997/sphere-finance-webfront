@@ -17,13 +17,15 @@ interface SignUpFormProps {
   walletVerified?: boolean;
 }
 
-// Define explicit type for signUp response to prevent excessive type instantiation
-type SignUpResponse = {
-  data: { 
-    user: { 
-      id: string 
-    } | null 
+// Define explicit type for signUp response without circular references
+interface SignUpResponseData {
+  user: { 
+    id: string 
   } | null;
+}
+
+interface SignUpResponseObject {
+  data: SignUpResponseData | null;
   error: Error | null;
 }
 
@@ -120,7 +122,7 @@ const SignUpForm = ({
       setLoading(true);
       
       // Use the explicit type to avoid deep type instantiation
-      const response = await signUp(email, password) as SignUpResponse;
+      const response = await signUp(email, password) as SignUpResponseObject;
       
       if (response.error) throw response.error;
       

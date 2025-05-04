@@ -4,13 +4,15 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Define explicit return type for signUp function
-interface SignUpResult {
-  data: { 
-    user: { 
-      id: string 
-    } | null 
+// Define explicit return type for signUp function with proper structure
+interface SignUpResponseData {
+  user: { 
+    id: string 
   } | null;
+}
+
+interface SignUpResult {
+  data: SignUpResponseData | null;
   error: Error | null;
 }
 
