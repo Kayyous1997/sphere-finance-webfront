@@ -18,7 +18,7 @@ interface SignUpFormProps {
 }
 
 // Define explicit type for signUp response to prevent excessive type instantiation
-interface SignUpResponse {
+type SignUpResponse = {
   data: { 
     user: { 
       id: string 
