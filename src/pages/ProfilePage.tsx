@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   User, Coins, Award, TrendingUp, 
-  Wallet, Clock, Settings, Shield, UserCircle, RefreshCw
+  Wallet, Clock, Settings, Shield, UserCircle, RefreshCw,
+  Timer, Check, XCircle, Flame
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +16,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { miningService } from "@/services/miningService";
 import ReferralSystem from "@/components/mining/ReferralSystem";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserProfile {
   id: string;
@@ -36,6 +39,15 @@ interface MiningSession {
   status: 'active' | 'completed' | 'terminated';
 }
 
+interface MiningStats {
+  totalHashrate: number;
+  totalShares: number;
+  totalRewards: number;
+  activeSessionId: string | null;
+  sessionDuration: string | null;
+  efficiency: number;
+}
+
 const ProfilePage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -46,6 +58,14 @@ const ProfilePage = () => {
   const [referralCount, setReferralCount] = useState(0);
   const [totalBonus, setTotalBonus] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [miningStats, setMiningStats] = useState<MiningStats>({
+    totalHashrate: 0,
+    totalShares: 0,
+    totalRewards: 0,
+    activeSessionId: null,
+    sessionDuration: null,
+    efficiency: 0
+  });
 
   useEffect(() => {
     // Check if user is authenticated
@@ -74,12 +94,40 @@ const ProfilePage = () => {
       // Fetch recent mining sessions
       const { data: sessionsData, error: sessionsError } = await supabase
         .from("mining_sessions")
-        .select("id, started_at, ended_at, rewards_earned, shares_accepted, status")
+        .select("id, started_at, ended_at, rewards_earned, shares_accepted, shares_rejected, status")
         .eq("user_id", user.id)
         .order("started_at", { ascending: false })
         .limit(5);
 
       if (sessionsError) throw sessionsError;
+
+      // Get active session if any
+      const activeSession = sessionsData?.find(session => session.status === 'active');
+      
+      // Calculate mining stats
+      let totalMiningStats = {
+        totalHashrate: profileData?.hashrate || 0,
+        totalShares: profileData?.total_shares || 0,
+        totalRewards: profileData?.mining_rewards || 0,
+        activeSessionId: activeSession?.id || null,
+        sessionDuration: null,
+        efficiency: 0
+      };
+
+      // Calculate session duration if there's an active session
+      if (activeSession) {
+        const startDate = new Date(activeSession.started_at);
+        const now = new Date();
+        const durationMs = now.getTime() - startDate.getTime();
+        const hours = Math.floor(durationMs / (1000 * 60 * 60));
+        const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+        totalMiningStats.sessionDuration = `${hours}h ${minutes}m`;
+        
+        // Calculate share efficiency (accepted / total shares)
+        const totalSessionShares = (activeSession.shares_accepted || 0) + (activeSession.shares_rejected || 0);
+        totalMiningStats.efficiency = totalSessionShares > 0 ? 
+          (activeSession.shares_accepted / totalSessionShares) * 100 : 0;
+      }
 
       // Fetch referral data
       try {
@@ -92,6 +140,7 @@ const ProfilePage = () => {
 
       setProfile(profileData as UserProfile);
       setSessions(sessionsData as MiningSession[]);
+      setMiningStats(totalMiningStats);
     } catch (error: any) {
       toast({
         title: "Error fetching profile data",
@@ -122,11 +171,26 @@ const ProfilePage = () => {
     });
   };
 
+  // Format number helper with thousands separators
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat().format(num);
+  };
+
   // If user is not loaded or loading data, show loading state
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8 flex justify-center">
-        <div className="text-xl">Loading profile data...</div>
+      <div className="container mx-auto py-8">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96 md:col-span-2" />
+        </div>
       </div>
     );
   }
@@ -221,6 +285,16 @@ const ProfilePage = () => {
                 </div>
                 <span className="font-medium text-sphere-green">+{totalBonus}%</span>
               </div>
+              
+              {miningStats.activeSessionId && (
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <Timer className="mr-2 h-5 w-5 text-blue-500" />
+                    <span>Mining Session</span>
+                  </div>
+                  <span className="font-medium text-sphere-green">Active ({miningStats.sessionDuration})</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -228,7 +302,7 @@ const ProfilePage = () => {
         {/* Earnings Overview */}
         <Card className="md:col-span-2 bg-sphere-card-dark border-gray-800">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Mining Earnings</CardTitle>
+            <CardTitle className="text-xl">Mining Dashboard</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -246,7 +320,7 @@ const ProfilePage = () => {
                   <Award className="h-5 w-5 mr-2 text-amber-500" />
                   <h3 className="text-sm font-medium text-gray-400">Total Shares</h3>
                 </div>
-                <p className="text-2xl font-bold">{profile?.total_shares || 0}</p>
+                <p className="text-2xl font-bold">{formatNumber(profile?.total_shares || 0)}</p>
                 <p className="text-xs text-gray-500 mt-1">Accepted shares</p>
               </div>
               
@@ -259,6 +333,33 @@ const ProfilePage = () => {
                 <p className="text-xs text-gray-500 mt-1">MH/s</p>
               </div>
             </div>
+
+            {miningStats.activeSessionId && (
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium text-gray-400">Share Efficiency</h3>
+                  <span className="text-xs text-gray-500">{miningStats.efficiency.toFixed(1)}%</span>
+                </div>
+                <Progress 
+                  value={miningStats.efficiency} 
+                  className="h-2 bg-gray-700" 
+                  indicatorClassName={`${
+                    miningStats.efficiency > 90 ? 'bg-sphere-green' :
+                    miningStats.efficiency > 75 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                />
+                <div className="flex justify-between mt-1 text-xs text-gray-500">
+                  <div className="flex items-center">
+                    <Check className="h-3 w-3 mr-1 text-sphere-green" />
+                    Accepted
+                  </div>
+                  <div className="flex items-center">
+                    <XCircle className="h-3 w-3 mr-1 text-red-500" />
+                    Rejected
+                  </div>
+                </div>
+              </div>
+            )}
 
             <h3 className="text-lg font-medium mb-4">Recent Mining Sessions</h3>
             
@@ -287,16 +388,17 @@ const ProfilePage = () => {
                         <TableRow key={session.id}>
                           <TableCell>{formatDate(session.started_at)}</TableCell>
                           <TableCell>{`${hours}h ${minutes}m`}</TableCell>
-                          <TableCell>{session.shares_accepted}</TableCell>
+                          <TableCell>{formatNumber(session.shares_accepted)}</TableCell>
                           <TableCell>{session.rewards_earned.toFixed(4)}</TableCell>
                           <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
+                            <span className={`px-2 py-1 rounded-full text-xs flex items-center w-fit ${
                               session.status === 'active' 
                                 ? 'bg-green-900/30 text-green-400' 
                                 : session.status === 'completed'
                                 ? 'bg-blue-900/30 text-blue-400'
                                 : 'bg-red-900/30 text-red-400'
                             }`}>
+                              {session.status === 'active' && <Flame className="h-3 w-3 mr-1" />}
                               {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
                             </span>
                           </TableCell>
