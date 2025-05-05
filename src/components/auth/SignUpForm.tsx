@@ -1,328 +1,217 @@
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Mail, Key, UserCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { SignUpResult, useAuth } from "@/contexts/AuthContext";
+
+// Define form schema with validation
+const formSchema = z.object({
+  email: z
+    .string()
+    .email("Please enter a valid email address")
+    .min(1, "Email is required"),
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username cannot exceed 50 characters"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(100, "Password cannot exceed 100 characters"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type FormSchema = z.infer<typeof formSchema>;
 
 interface SignUpFormProps {
   onSuccess?: () => void;
-  prefilledEmail?: string;
-  prefilledWalletAddress?: string;
-  walletVerified?: boolean;
+  referralCode?: string | null;
 }
 
-// Import just the type, not the value
-import type { SignUpResult } from "@/contexts/AuthContext";
-
-const SignUpForm = ({ 
-  onSuccess,
-  prefilledEmail = "",
-  prefilledWalletAddress = "",
-  walletVerified = false
-}: SignUpFormProps) => {
-  const { signUp } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [manualReferralCode, setManualReferralCode] = useState("");
-  const [email, setEmail] = useState(prefilledEmail);
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+const SignUpForm = ({ onSuccess, referralCode }: SignUpFormProps) => {
   const [loading, setLoading] = useState(false);
-  const [userAgreement, setUserAgreement] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { signUp } = useAuth();
 
-  useEffect(() => {
-    // Set email if provided
-    if (prefilledEmail) {
-      setEmail(prefilledEmail);
-    }
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      username: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    // Extract referral code from URL
-    const searchParams = new URLSearchParams(location.search);
-    const ref = searchParams.get('ref');
-    if (ref) {
-      console.log("Found referral code in URL:", ref);
-      setReferralCode(ref);
-      setManualReferralCode(ref);
-      // Don't navigate away - just store the ref code
-    }
-  }, [prefilledEmail, location]);
-
-  const hasUpper = /[A-Z]/.test(password);
-  const hasLower = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
-  const isLongEnough = password.length >= 8;
-  
-  const isPasswordValid = hasUpper && hasLower && hasNumber && hasSpecial && isLongEnough;
-  const doPasswordsMatch = password === confirmPassword;
-
-  // Determine which referral code to use (from URL or manually entered)
-  const effectiveReferralCode = referralCode || (manualReferralCode.trim() !== "" ? manualReferralCode : null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (!userAgreement) {
-      toast.error("You must agree to the terms and conditions");
-      return;
-    }
-    
-    if (!isPasswordValid) {
-      toast.error("Password does not meet the requirements");
-      return;
-    }
-    
-    if (!doPasswordsMatch) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    // Check if email is already linked to a different wallet
-    if (prefilledWalletAddress) {
-      try {
-        const { data: existingUser, error: userError } = await supabase
-          .from('profiles')
-          .select('wallet_address')
-          .eq('email', email)
-          .single();
-        
-        if (existingUser && existingUser.wallet_address !== prefilledWalletAddress) {
-          toast.error("This email is already linked to a different wallet address");
-          return;
-        }
-      } catch (error) {
-        // Ignore if user doesn't exist yet
-      }
-    }
+  const handleSignUp = async (values: FormSchema) => {
+    setLoading(true);
+    setError(null);
     
     try {
-      setLoading(true);
+      // Fixed TypeScript error by using the imported SignUpResult type
+      const result = await signUp(values.email, values.password);
       
-      // Fix type recursion by using a proper type cast
-      const signUpResponse = await signUp(email, password);
-      
-      // Use the more explicit type handling to avoid recursion
-      const response = {
-        data: signUpResponse.data,
-        error: signUpResponse.error
-      };
-      
-      if (response.error) throw response.error;
-      
-      // Process referral if a referral code was provided
-      if (effectiveReferralCode && response.data?.user) {
-        console.log(`Processing referral code ${effectiveReferralCode} for new user ${response.data.user.id}`);
-        
-        try {
-          const { data: referrerData, error: referrerError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('referral_code', effectiveReferralCode)
-            .single();
-          
-          if (referrerError) {
-            console.error("Referrer lookup error:", referrerError);
-          } else if (referrerData) {
-            console.log("Found referrer:", referrerData.id);
-            
-            // Add referral record first
-            const { data: referralData, error: referralError } = await supabase
-              .from('referrals')
-              .insert({
-                referrer_id: referrerData.id,
-                referred_id: response.data.user.id,
-                points_awarded: false
-              })
-              .select();
-              
-            if (referralError) {
-              console.error("Referral creation error:", referralError);
-            } else {
-              console.log("Referral record created:", referralData);
-            }
-            
-            // Update user profile with referrer
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .update({ referred_by: referrerData.id })
-              .eq('id', response.data.user.id);
-              
-            if (profileError) {
-              console.error("Profile update error:", profileError);
-            } else {
-              console.log("Profile updated with referrer ID");
-            }
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      if (result.data?.user?.id) {
+        // Handle referral code if present
+        if (referralCode) {
+          console.log(`Applying referral code: ${referralCode}`);
+          try {
+            // Import dynamically to avoid circular dependency
+            const { miningService } = await import("@/services/miningService");
+            await miningService.applyReferralCode(result.data.user.id, referralCode);
+          } catch (referralError) {
+            console.error("Error applying referral code:", referralError);
+            // Continue with sign up even if referral application fails
           }
-        } catch (err) {
-          console.error("Referral processing error:", err);
+        }
+
+        if (onSuccess) {
+          onSuccess();
         }
       }
-      
-      // Update wallet info if provided
-      if (response.data?.user && prefilledWalletAddress) {
-        await supabase
-          .from('profiles')
-          .update({ 
-            wallet_address: prefilledWalletAddress,
-            wallet_verified: walletVerified 
-          })
-          .eq('id', response.data.user.id);
-      }
-      
-      toast.success("Check your email for the confirmation link!");
-      if (onSuccess) onSuccess();
-    } catch (error: any) {
-      console.error("Sign up error:", error);
-      toast.error(String(error));
+    } catch (err: any) {
+      setError(err.message || "Failed to create account");
+      console.error("Sign up error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={!!prefilledEmail}
-          required
-          className="bg-sphere-card-dark border-gray-800"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSignUp)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    className="pl-9"
+                    placeholder="your.email@example.com"
+                    type="email"
+                    autoComplete="email"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      
-      <div className="relative">
-        <Label htmlFor="password">Password</Label>
-        <div className="relative">
-          <Input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="bg-sphere-card-dark border-gray-800 pr-10"
-          />
-          <button 
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
         
-        {password && (
-          <div className="mt-2 space-y-1 text-xs">
-            <div className="grid grid-cols-2 gap-2">
-              <div className={`flex items-center ${hasUpper ? 'text-green-500' : 'text-gray-400'}`}>
-                <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${hasUpper ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span>Uppercase letter</span>
-              </div>
-              <div className={`flex items-center ${hasLower ? 'text-green-500' : 'text-gray-400'}`}>
-                <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${hasLower ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span>Lowercase letter</span>
-              </div>
-              <div className={`flex items-center ${hasNumber ? 'text-green-500' : 'text-gray-400'}`}>
-                <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${hasNumber ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span>Number</span>
-              </div>
-              <div className={`flex items-center ${hasSpecial ? 'text-green-500' : 'text-gray-400'}`}>
-                <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${hasSpecial ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span>Special character</span>
-              </div>
-              <div className={`flex items-center ${isLongEnough ? 'text-green-500' : 'text-gray-400'}`}>
-                <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isLongEnough ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span>8+ characters</span>
-              </div>
-            </div>
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <UserCircle className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Choose a username"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Key className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Create a password"
+                    type="password"
+                    autoComplete="new-password"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm Password</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Key className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Confirm your password"
+                    type="password"
+                    autoComplete="new-password"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {error && (
+          <div className="bg-red-100 dark:bg-red-900/20 border dark:border-red-800 border-red-200 rounded-md p-3 text-sm text-red-600 dark:text-red-400">
+            {error}
           </div>
         )}
-      </div>
-      
-      <div className="relative">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
-        <div className="relative">
-          <Input
-            id="confirmPassword"
-            type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            className={`bg-sphere-card-dark border-gray-800 pr-10 ${
-              confirmPassword && !doPasswordsMatch ? "border-red-500" : ""
-            }`}
-          />
-          <button 
-            type="button"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-          >
-            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
-        {confirmPassword && !doPasswordsMatch && (
-          <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
-        )}
-      </div>
-      
-      {/* Add referral code input */}
-      <div>
-        <Label htmlFor="referralCode">Referral Code (Optional)</Label>
-        <Input
-          id="referralCode"
-          type="text"
-          placeholder="Enter referral code"
-          value={manualReferralCode}
-          onChange={(e) => setManualReferralCode(e.target.value)}
-          className="bg-sphere-card-dark border-gray-800"
-        />
-        {referralCode && (
-          <p className="text-green-500 text-xs mt-1">Referral code from URL applied: {referralCode}</p>
-        )}
-      </div>
-      
-      <div className="flex items-center space-x-2">
-        <Checkbox 
-          id="agreement" 
-          checked={userAgreement} 
-          onCheckedChange={(checked) => setUserAgreement(checked === true)}
-        />
-        <label
-          htmlFor="agreement"
-          className="text-sm text-gray-300 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+
+        <Button
+          type="submit"
+          className="w-full bg-sphere-green text-black hover:bg-green-400"
+          disabled={loading}
         >
-          I agree to the <a href="#" className="text-sphere-green hover:underline">Terms of Service</a> and <a href="#" className="text-sphere-green hover:underline">Privacy Policy</a>
-        </label>
-      </div>
-      
-      <Button 
-        type="submit" 
-        className="w-full" 
-        disabled={loading || !userAgreement || !isPasswordValid || !doPasswordsMatch}
-      >
-        {loading ? "Creating account..." : "Sign Up"}
-      </Button>
-    </form>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...
+            </>
+          ) : (
+            <>
+              Create account <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 };
 

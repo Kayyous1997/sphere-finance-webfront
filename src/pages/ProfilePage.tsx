@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   User, Coins, Award, TrendingUp, 
-  Wallet, Clock, Settings, Shield 
+  Wallet, Clock, Settings, Shield, UserCircle, RefreshCw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,6 +12,9 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { miningService } from "@/services/miningService";
+import ReferralSystem from "@/components/mining/ReferralSystem";
 
 interface UserProfile {
   id: string;
@@ -21,6 +24,7 @@ interface UserProfile {
   total_shares: number | null;
   hashrate: number | null;
   created_at: string;
+  referral_code: string | null;
 }
 
 interface MiningSession {
@@ -39,6 +43,9 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [sessions, setSessions] = useState<MiningSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [referralCount, setReferralCount] = useState(0);
+  const [totalBonus, setTotalBonus] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -47,43 +54,64 @@ const ProfilePage = () => {
       return;
     }
 
-    const fetchProfileData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch user profile data
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (profileError) throw profileError;
-        
-        // Fetch recent mining sessions
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from("mining_sessions")
-          .select("id, started_at, ended_at, rewards_earned, shares_accepted, status")
-          .eq("user_id", user.id)
-          .order("started_at", { ascending: false })
-          .limit(5);
-
-        if (sessionsError) throw sessionsError;
-
-        setProfile(profileData as UserProfile);
-        setSessions(sessionsData as MiningSession[]);
-      } catch (error: any) {
-        toast({
-          title: "Error fetching profile data",
-          description: error.message,
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchProfileData();
   }, [user, navigate, toast]);
+
+  const fetchProfileData = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      // Fetch user profile data
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      
+      // Fetch recent mining sessions
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from("mining_sessions")
+        .select("id, started_at, ended_at, rewards_earned, shares_accepted, status")
+        .eq("user_id", user.id)
+        .order("started_at", { ascending: false })
+        .limit(5);
+
+      if (sessionsError) throw sessionsError;
+
+      // Fetch referral data
+      try {
+        const referralData = await miningService.getUserReferrals(user.id);
+        setReferralCount(referralData.count || 0);
+        setTotalBonus(referralData.totalBonus || 0);
+      } catch (referralError) {
+        console.error("Error fetching referral data:", referralError);
+      }
+
+      setProfile(profileData as UserProfile);
+      setSessions(sessionsData as MiningSession[]);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching profile data",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchProfileData();
+    setIsRefreshing(false);
+    toast({
+      title: "Profile refreshed",
+      description: "Your profile data has been updated",
+    });
+  };
 
   // Format date helper
   const formatDate = (dateString: string) => {
@@ -110,12 +138,24 @@ const ProfilePage = () => {
 
   return (
     <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">My Profile</h1>
-        <p className="text-gray-400">View and manage your earnings and account details</p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">My Profile</h1>
+          <p className="text-gray-400">View and manage your earnings and account details</p>
+        </div>
+        <Button 
+          onClick={handleRefresh} 
+          variant="outline" 
+          size="sm"
+          disabled={isRefreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh Data
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {/* Profile Card */}
         <Card className="md:col-span-1 bg-sphere-card-dark border-gray-800">
           <CardHeader className="pb-2">
@@ -124,9 +164,15 @@ const ProfilePage = () => {
           <CardContent>
             <div className="flex flex-col items-center text-center mb-6">
               <Avatar className="h-24 w-24 mb-4 bg-sphere-green text-black">
-                <AvatarFallback className="text-3xl">
-                  {user?.email?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
+                {profile?.username ? (
+                  <AvatarFallback className="text-3xl">
+                    {profile.username.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                ) : (
+                  <AvatarFallback className="text-3xl">
+                    <UserCircle className="h-16 w-16" />
+                  </AvatarFallback>
+                )}
               </Avatar>
               <h2 className="text-xl font-semibold">
                 {profile?.username || user?.email?.split("@")[0] || "User"}
@@ -166,6 +212,14 @@ const ProfilePage = () => {
                   <span>Account Type</span>
                 </div>
                 <span className="font-medium">Standard</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <div className="flex items-center">
+                  <Award className="mr-2 h-5 w-5 text-amber-500" />
+                  <span>Referral Bonus</span>
+                </div>
+                <span className="font-medium text-sphere-green">+{totalBonus}%</span>
               </div>
             </div>
           </CardContent>
@@ -261,6 +315,18 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Referral System */}
+      {user && (
+        <div className="mt-6">
+          <ReferralSystem 
+            userId={user.id} 
+            referralCode={profile?.referral_code || ""} 
+            referralCount={referralCount}
+            totalBonus={totalBonus}
+          />
+        </div>
+      )}
     </div>
   );
 };
