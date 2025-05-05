@@ -1,5 +1,6 @@
 
 import { Card, CardContent } from "@/components/ui/card";
+import { TrendingUp } from "lucide-react";
 
 interface HashrateChartProps {
   isActive: boolean;
@@ -15,7 +16,17 @@ const HashrateChart = ({ isActive, stats = { hashrate: 0, sharesAccepted: 0, sha
   return (
     <Card className="card-gradient">
       <CardContent className="p-6">
-        <h2 className="text-xl font-bold mb-4">Hashrate</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Hashrate</h2>
+          {isActive && (
+            <div className="flex items-center px-2 py-1 bg-green-900/30 rounded-full text-green-400 text-xs">
+              <span className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> 
+                ACTIVE
+              </span>
+            </div>
+          )}
+        </div>
         <div className="h-56 bg-sphere-card-dark rounded-md flex items-end justify-between p-4 space-x-2 relative">
           {Array.from({ length: 12 }).map((_, idx) => (
             <div key={idx} className="h-full flex flex-col justify-end w-full">
@@ -26,7 +37,7 @@ const HashrateChart = ({ isActive, stats = { hashrate: 0, sharesAccepted: 0, sha
                     : "0%",
                   transition: "height 0.5s ease",
                 }}
-                className="w-full bg-sphere-green"
+                className={`w-full ${isActive ? 'bg-sphere-green' : 'bg-gray-700'}`}
               />
             </div>
           ))}

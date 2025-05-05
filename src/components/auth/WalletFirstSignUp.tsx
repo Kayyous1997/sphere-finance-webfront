@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MetamaskLogo, ArrowRight, Loader2 } from "lucide-react";
+import { Wallet, ArrowRight, Loader2 } from "lucide-react";
 import SignUpForm from "@/components/auth/SignUpForm";
 
 const WalletFirstSignUp = () => {
@@ -16,7 +17,7 @@ const WalletFirstSignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get("referralCode");
-  const { signInWithMetamask, user } = useAuth();
+  const { user, connectWallet } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,10 +29,10 @@ const WalletFirstSignUp = () => {
     }
   }, [user, navigate]);
 
-  const connectWallet = async () => {
+  const handleConnectWallet = async () => {
     setIsLoading(true);
     try {
-      const address = await signInWithMetamask();
+      const address = await connectWallet();
       if (address) {
         setWalletAddress(address);
         toast({
@@ -69,7 +70,7 @@ const WalletFirstSignUp = () => {
             <div className="flex flex-col space-y-4">
               <Button
                 className="bg-yellow-500 hover:bg-yellow-400 text-black"
-                onClick={connectWallet}
+                onClick={handleConnectWallet}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -79,7 +80,7 @@ const WalletFirstSignUp = () => {
                   </>
                 ) : (
                   <>
-                    <MetamaskLogo className="mr-2 h-4 w-4" />
+                    <Wallet className="mr-2 h-4 w-4" />
                     Connect Metamask
                   </>
                 )}

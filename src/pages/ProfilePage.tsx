@@ -36,6 +36,7 @@ interface MiningSession {
   ended_at: string | null;
   rewards_earned: number;
   shares_accepted: number;
+  shares_rejected: number;
   status: 'active' | 'completed' | 'terminated';
 }
 
@@ -75,7 +76,7 @@ const ProfilePage = () => {
     }
 
     fetchProfileData();
-  }, [user, navigate, toast]);
+  }, [user, navigate]);
 
   const fetchProfileData = async () => {
     if (!user) return;
@@ -104,11 +105,14 @@ const ProfilePage = () => {
       // Get active session if any
       const activeSession = sessionsData?.find(session => session.status === 'active');
       
-      // Calculate mining stats
+      // Get total mining stats - combine both offline and online mining data
+      const combinedStats = await miningService.getTotalMiningStats(user.id);
+      
+      // Calculate mining stats including active session data
       let totalMiningStats = {
-        totalHashrate: profileData?.hashrate || 0,
-        totalShares: profileData?.total_shares || 0,
-        totalRewards: profileData?.mining_rewards || 0,
+        totalHashrate: profileData?.hashrate || combinedStats.combinedHashrate || 0,
+        totalShares: profileData?.total_shares || combinedStats.combinedShares || 0,
+        totalRewards: profileData?.mining_rewards || combinedStats.combinedRewards || 0,
         activeSessionId: activeSession?.id || null,
         sessionDuration: null,
         efficiency: 0
@@ -311,7 +315,7 @@ const ProfilePage = () => {
                   <Coins className="h-5 w-5 mr-2 text-sphere-green" />
                   <h3 className="text-sm font-medium text-gray-400">Total Rewards</h3>
                 </div>
-                <p className="text-2xl font-bold">{profile?.mining_rewards?.toFixed(4) || "0.0000"}</p>
+                <p className="text-2xl font-bold">{miningStats.totalRewards.toFixed(4) || "0.0000"}</p>
                 <p className="text-xs text-gray-500 mt-1">SPHERE tokens</p>
               </div>
               
@@ -320,7 +324,7 @@ const ProfilePage = () => {
                   <Award className="h-5 w-5 mr-2 text-amber-500" />
                   <h3 className="text-sm font-medium text-gray-400">Total Shares</h3>
                 </div>
-                <p className="text-2xl font-bold">{formatNumber(profile?.total_shares || 0)}</p>
+                <p className="text-2xl font-bold">{formatNumber(miningStats.totalShares || 0)}</p>
                 <p className="text-xs text-gray-500 mt-1">Accepted shares</p>
               </div>
               
@@ -329,7 +333,7 @@ const ProfilePage = () => {
                   <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
                   <h3 className="text-sm font-medium text-gray-400">Current Hashrate</h3>
                 </div>
-                <p className="text-2xl font-bold">{profile?.hashrate?.toFixed(2) || "0.00"}</p>
+                <p className="text-2xl font-bold">{miningStats.totalHashrate.toFixed(2) || "0.00"}</p>
                 <p className="text-xs text-gray-500 mt-1">MH/s</p>
               </div>
             </div>
