@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -353,14 +352,31 @@ export const miningService = {
       const referralCount = referrals ? referrals.length : 0;
       console.log(`Found ${referralCount} referrals for user ${userId}`);
       
-      // Add the referral code
+      // Get the referral code, generate one if none exists
       const { data: profile } = await supabase
         .from('profiles')
         .select('referral_code')
         .eq('id', userId)
         .single();
       
-      const referralCode = profile?.referral_code || ``;
+      let referralCode = profile?.referral_code || ``;
+      
+      // If no referral code exists, generate and save one
+      if (!referralCode) {
+        // Generate a unique code based on userId + random string
+        const newCode = `SPH${userId.substring(0, 4)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        
+        // Save the new referral code
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ referral_code: newCode })
+          .eq('id', userId);
+          
+        if (!updateError) {
+          referralCode = newCode;
+          console.log(`Generated and saved new referral code: ${newCode}`);
+        }
+      }
       
       // Calculate bonus based on referral count
       let baseBonus = referralCount * 5;
@@ -389,6 +405,24 @@ export const miningService = {
     try {
       console.log(`Applying referral code: ${referralCode} for user: ${userId}`);
       
+      // Check if user already has a referral applied
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('referred_by')
+        .eq('id', userId)
+        .single();
+        
+      if (profileError) {
+        console.error("Error checking profile:", profileError);
+        throw profileError;
+      }
+      
+      if (userProfile && userProfile.referred_by) {
+        console.warn("User already has a referrer");
+        toast.error('You have already used a referral code');
+        return false;
+      }
+      
       // Find the user who owns this referral code
       const { data: referrer, error: referrerError } = await supabase
         .from('profiles')
@@ -409,42 +443,23 @@ export const miningService = {
         return false;
       }
       
-      // Check if user has already been referred
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('referred_by')
-        .eq('id', userId)
-        .single();
-        
-      if (profileError) {
-        console.error("Error checking profile:", profileError);
-        throw profileError;
-      }
-      
-      if (profile.referred_by) {
-        console.error("User already has a referrer");
-        toast.error('You have already used a referral code');
-        return false;
-      }
-      
       console.log("About to insert referral record and update profile");
       
-      // IMPORTANT: First create a record in the referrals table
-      const { error: referralError, data: referralData } = await supabase
+      // First create a record in the referrals table
+      const { error: referralError } = await supabase
         .from('referrals')
         .insert({
           referrer_id: referrer.id,
           referred_id: userId,
           points_awarded: false
-        })
-        .select();
+        });
       
       if (referralError) {
         console.error("Error creating referral record:", referralError);
         throw referralError;
       }
       
-      console.log("Referral record created successfully:", referralData);
+      console.log("Referral record created successfully");
       
       // Then update user profile with referrer ID
       const { error: updateError } = await supabase
@@ -460,7 +475,6 @@ export const miningService = {
       console.log("Profile updated successfully with referrer ID");
       
       toast.success('Referral code applied successfully');
-      console.log(`Referral successfully applied: ${userId} was referred by ${referrer.id}`);
       return true;
     } catch (error) {
       console.error('Error applying referral code:', error);

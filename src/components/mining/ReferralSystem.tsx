@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Users, Copy, Award, Share2 } from "lucide-react";
+import { Users, Copy, Award, Share2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { miningService } from "@/services/miningService";
 
@@ -22,8 +23,10 @@ const ReferralSystem = ({
   const [showShare, setShowShare] = useState(false);
   const [localReferralCount, setLocalReferralCount] = useState(referralCount);
   const [localTotalBonus, setLocalTotalBonus] = useState(totalBonus);
+  const [localReferralCode, setLocalReferralCode] = useState(referralCode);
   const [subscribed, setSubscribed] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Subscribe to real-time referral updates with improved logging
   useEffect(() => {
@@ -34,6 +37,7 @@ const ReferralSystem = ({
     // Initialize with passed props
     setLocalReferralCount(referralCount);
     setLocalTotalBonus(totalBonus);
+    setLocalReferralCode(referralCode);
     
     // Fetch initial referral data to ensure we have the latest count
     const fetchInitialData = async () => {
@@ -41,6 +45,7 @@ const ReferralSystem = ({
         const data = await miningService.getUserReferrals(userId);
         console.log("Initial referral data:", data);
         setLocalReferralCount(data.count);
+        setLocalReferralCode(data.code || referralCode);
         
         // Calculate bonus based on count
         const baseBonus = data.count * 5;
@@ -80,6 +85,11 @@ const ReferralSystem = ({
         setLocalTotalBonus(baseBonus + milestoneBonus);
       }
       
+      // Update referral code if available
+      if (data.code && data.code !== localReferralCode) {
+        setLocalReferralCode(data.code);
+      }
+      
       setSubscribed(true);
     });
     
@@ -89,7 +99,37 @@ const ReferralSystem = ({
       subscription.unsubscribe();
       setSubscribed(false);
     };
-  }, [userId, referralCount, totalBonus]);
+  }, [userId, referralCount, totalBonus, referralCode, localReferralCount, localReferralCode]);
+
+  // Manually refresh referral data
+  const refreshReferralData = async () => {
+    if (!userId || isRefreshing) return;
+    
+    try {
+      setIsRefreshing(true);
+      const data = await miningService.getUserReferrals(userId);
+      
+      setLocalReferralCount(data.count);
+      setLocalTotalBonus(data.count * 5 + (
+        data.count >= 50 ? 100 : 
+        data.count >= 25 ? 50 : 
+        data.count >= 10 ? 25 : 
+        data.count >= 5 ? 10 : 0
+      ));
+      
+      if (data.code) {
+        setLocalReferralCode(data.code);
+      }
+      
+      setLastUpdateTime(new Date());
+      toast.success("Referral data refreshed");
+    } catch (error) {
+      console.error("Error refreshing referral data:", error);
+      toast.error("Failed to refresh referral data");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Calculate milestone progress
   const getNextMilestone = () => {
@@ -106,7 +146,7 @@ const ReferralSystem = ({
     : Math.floor((localReferralCount / nextMilestone.target) * 100);
 
   // Generate referral code if none exists
-  const generatedCode = referralCode || `SPH${userId.substring(0, 8)}`;
+  const generatedCode = localReferralCode || `SPH${userId.substring(0, 8)}`;
 
   // Copy referral link to clipboard
   const copyReferralLink = () => {
@@ -124,14 +164,27 @@ const ReferralSystem = ({
     <Card className="card-gradient">
       <CardContent className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold flex items-center">
-            <Users className="mr-2 text-sphere-green" /> Referral System
-            {subscribed && <span className="ml-2 text-xs text-green-500">(Live)</span>}
-            {lastUpdateTime && <span className="ml-2 text-xs text-blue-400">(Updated: {lastUpdateTime.toLocaleTimeString()})</span>}
-          </h2>
-          <div className="bg-sphere-card-dark px-3 py-1.5 rounded text-sm">
-            <span className="text-gray-400 mr-1">Current bonus:</span>
-            <span className="text-sphere-green font-medium">+{localTotalBonus}%</span>
+          <div className="flex items-center">
+            <h2 className="text-xl font-bold flex items-center">
+              <Users className="mr-2 text-sphere-green" /> Referral System
+              {subscribed && <span className="ml-2 text-xs text-green-500">(Live)</span>}
+              {lastUpdateTime && <span className="ml-2 text-xs text-blue-400">(Updated: {lastUpdateTime.toLocaleTimeString()})</span>}
+            </h2>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              onClick={refreshReferralData}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            <div className="bg-sphere-card-dark px-3 py-1.5 rounded text-sm">
+              <span className="text-gray-400 mr-1">Current bonus:</span>
+              <span className="text-sphere-green font-medium">+{localTotalBonus}%</span>
+            </div>
           </div>
         </div>
 

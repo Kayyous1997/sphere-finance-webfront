@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ interface SignUpFormProps {
   walletVerified?: boolean;
 }
 
-// Import the types from AuthContext
+// Import just the type, not the value
 import type { SignUpResult } from "@/contexts/AuthContext";
 
 const SignUpForm = ({ 
@@ -111,10 +112,13 @@ const SignUpForm = ({
     try {
       setLoading(true);
       
-      // Use type assertion with a simple type to break recursion
-      const response = await signUp(email, password) as unknown as {
-        data: { user: { id: string } | null } | null;
-        error: Error | null;
+      // Fix type recursion by using a proper type cast
+      const signUpResponse = await signUp(email, password);
+      
+      // Use the more explicit type handling to avoid recursion
+      const response = {
+        data: signUpResponse.data,
+        error: signUpResponse.error
       };
       
       if (response.error) throw response.error;

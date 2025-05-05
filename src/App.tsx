@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-ro
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { miningService } from "@/services/miningService";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
@@ -25,6 +25,7 @@ const ReferralHandler = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [processedReferral, setProcessedReferral] = useState(false);
 
   useEffect(() => {
     const handleReferral = async () => {
@@ -32,7 +33,9 @@ const ReferralHandler = () => {
       const searchParams = new URLSearchParams(location.search);
       const referralCode = searchParams.get('ref');
       
-      if (referralCode && user) {
+      // Only process if we have both a referral code and a logged-in user,
+      // and we haven't processed this referral yet
+      if (referralCode && user && !processedReferral) {
         console.log(`Detected referral code in URL: ${referralCode} for user: ${user.id}`);
         
         try {
@@ -42,24 +45,26 @@ const ReferralHandler = () => {
           
           if (applied) {
             console.log("Referral successfully applied, clearing URL params");
+            setProcessedReferral(true);
+            
             // Clear the referral code from URL
             navigate(location.pathname, { replace: true });
+            
             // Show success notification
             toast.success("Referral code applied successfully!");
           } else {
             console.log("Failed to apply referral code");
+            setProcessedReferral(true); // Mark as processed even if it failed to avoid repeated attempts
           }
         } catch (error) {
           console.error("Error applying referral code:", error);
+          setProcessedReferral(true); // Mark as processed to avoid repeated attempts
         }
-      } else if (referralCode) {
-        console.log("Referral code found but user not logged in yet");
-        // Keep the code in URL so it can be applied after login/signup
       }
     };
     
     handleReferral();
-  }, [location, user, navigate]);
+  }, [location, user, navigate, processedReferral]);
 
   return null;
 };
